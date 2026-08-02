@@ -1,0 +1,51 @@
+lapisan,eksperimen,item,mean,std,n,sign,vonis,catatan
+L1 UAV,demonstrator,mAP50,0.758,,1.0,,,"YOLO11n, 1 lipatan, 15 epoch"
+L1 UAV,demonstrator,PR-AUC kesehatan,0.182,0.059,3.0,,,block-CV 3 ortho; acak=0.013
+L1 UAV,demonstrator,ROC-AUC kesehatan,0.861,,3.0,,,
+L1 UAV,demonstrator,PR-AUC is_unbalance,0.181,0.091,3.0,,,d=0.001 -> DITOLAK
+L2 Eg9PP,ablasi fitur h=1,"AP(+2hop) - AP(v1), view=true",-0.00228,0.00686,40.0,16/40,INCONCLUSIVE,20 seed x 2 lipatan | varian +2hop
+L2 Eg9PP,ablasi fitur h=1,"AP(+umur) - AP(v1), view=true",-0.0043,0.00637,40.0,8/40,INCONCLUSIVE,20 seed x 2 lipatan | varian +umur
+L2 Eg9PP,ablasi fitur h=2,"AP(+2hop) - AP(v1), view=true",-0.00705,0.00746,40.0,8/40,INCONCLUSIVE,20 seed x 2 lipatan | varian +2hop
+L2 Eg9PP,ablasi fitur h=2,"AP(+umur) - AP(v1), view=true",-0.00703,0.00867,40.0,6/40,INCONCLUSIVE,20 seed x 2 lipatan | varian +umur
+L2 Eg9PP,ablasi fitur h=3,"AP(+2hop) - AP(v1), view=true",-0.00864,0.00864,40.0,4/40,NEG,20 seed x 2 lipatan | varian +2hop
+L2 Eg9PP,ablasi fitur h=3,"AP(+umur) - AP(v1), view=true",-0.00802,0.01024,40.0,6/40,INCONCLUSIVE,20 seed x 2 lipatan | varian +umur
+L2 Eg9PP,ablasi fitur h=4,"AP(+2hop) - AP(v1), view=true",-0.00985,0.00792,40.0,3/40,NEG,20 seed x 2 lipatan | varian +2hop
+L2 Eg9PP,ablasi fitur h=4,"AP(+umur) - AP(v1), view=true",-0.00791,0.00855,40.0,5/40,INCONCLUSIVE,20 seed x 2 lipatan | varian +umur
+L2 Eg9PP,dekomposisi+tangga h=1,STRUKTUR vs local r<=3  (paling ketat),0.00346,0.00327,40.0,35/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=1,STRUKTUR vs local r<=6,0.00452,0.00347,40.0,36/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=1,STRUKTUR vs random GLOBAL,0.0044,0.00464,40.0,30/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=1,prevalensi (random-nograph),0.00255,0.00349,40.0,32/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=1,temporal (nograph-MLP),0.00442,0.00555,40.0,34/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=1,total STGNN-MLP,0.01136,0.00687,40.0,38/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=2,STRUKTUR vs local r<=3  (paling ketat),0.0076,0.00472,40.0,38/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=2,STRUKTUR vs local r<=6,0.0097,0.00531,40.0,38/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=2,STRUKTUR vs random GLOBAL,0.00978,0.006,40.0,37/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=2,prevalensi (random-nograph),0.00295,0.00446,40.0,33/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=2,temporal (nograph-MLP),0.00337,0.00743,40.0,27/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=2,total STGNN-MLP,0.0161,0.01013,40.0,37/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=3,STRUKTUR vs local r<=3  (paling ketat),0.0128,0.00843,40.0,36/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=3,STRUKTUR vs local r<=6,0.01458,0.00743,40.0,40/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=3,STRUKTUR vs random GLOBAL,0.01512,0.00811,40.0,39/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=3,prevalensi (random-nograph),0.00209,0.00786,40.0,25/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=3,temporal (nograph-MLP),0.00206,0.00918,40.0,21/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=3,total STGNN-MLP,0.01927,0.01302,40.0,36/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=4,STRUKTUR vs local r<=3  (paling ketat),0.01393,0.00935,40.0,39/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=4,STRUKTUR vs local r<=6,0.01539,0.00922,40.0,40/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=4,STRUKTUR vs random GLOBAL,0.01653,0.00973,40.0,39/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=4,prevalensi (random-nograph),0.0018,0.00696,40.0,26/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=4,temporal (nograph-MLP),0.00115,0.00901,40.0,19/40,INCONCLUSIVE,20 seed x 2 lipatan
+L2 Eg9PP,dekomposisi+tangga h=4,total STGNN-MLP,0.01949,0.01284,40.0,35/40,POS,20 seed x 2 lipatan
+L2 Eg9PP,kepala SI(D) h=1,SI(D) head (SID-true),-0.0115,0.0072,8.0,0/8,NEG,TIDAK dapat dibandingkan dengan SEIR mana pun
+L2 Eg9PP,kepala SI(D) h=2,SI(D) head (SID-true),-0.023,0.0088,8.0,0/8,NEG,TIDAK dapat dibandingkan dengan SEIR mana pun
+L2 Eg9PP,kepala SI(D) h=3,SI(D) head (SID-true),-0.0293,0.0186,40.0,4/40,NEG,TIDAK dapat dibandingkan dengan SEIR mana pun
+L2 Eg9PP,kepala SI(D) h=4,SI(D) head (SID-true),-0.0426,0.0145,8.0,0/8,NEG,TIDAK dapat dibandingkan dengan SEIR mana pun
+L2 Eg9PP,null permutasi h=1,RR,5.1666,,500.0,0/500,,null 4.13+/-0.24; kelebihan 1.25x; z=+4.4
+L2 Eg9PP,null permutasi h=1,RR_MH,1.6324,,500.0,0/500,,null 1.13+/-0.11; kelebihan 1.45x; z=+4.6
+L2 Eg9PP,null permutasi h=2,RR,4.7382,,500.0,0/500,,null 3.73+/-0.21; kelebihan 1.27x; z=+4.8
+L2 Eg9PP,null permutasi h=2,RR_MH,1.6346,,500.0,0/500,,null 1.12+/-0.10; kelebihan 1.46x; z=+5.1
+L2 Eg9PP,null permutasi h=3,RR,4.4685,,500.0,0/500,,null 3.46+/-0.19; kelebihan 1.29x; z=+5.3
+L2 Eg9PP,null permutasi h=3,RR_MH,1.6462,,500.0,0/500,,null 1.11+/-0.10; kelebihan 1.48x; z=+5.6
+L2 Eg9PP,null permutasi h=4,RR,4.0627,,500.0,0/500,,null 3.14+/-0.17; kelebihan 1.29x; z=+5.5
+L2 Eg9PP,null permutasi h=4,RR_MH,1.6287,,500.0,0/500,,null 1.11+/-0.09; kelebihan 1.47x; z=+5.7
+jembatan,uji lebar sepur,derajat @1.5x L1,5.62,,,,,kotak ground-truth = batas atas
+jembatan,uji lebar sepur,derajat @1.5x L2,5.74,,,,,selisih 2%

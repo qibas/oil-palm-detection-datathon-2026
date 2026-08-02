@@ -1,0 +1,110 @@
+dataset: REAL Eg9PP data (dataset.py)
+device: cpu | seeds=20 | epochs=60 | WINDOW=3 | N_REL=1 | horizons=(1, 2, 3, 4)
+  fold 0 (44A): train 480 / test 720 palms, 0 edges cut
+  fold 1 (44B): train 720 / test 480 palms, 0 edges cut
+  features (T,N,d) = (45, 1200, 24) | mean degree 5.59 | edges 3354 | adjacency scale 0.1789
+  label caveat — negatives that are actually CENSORED inside the horizon: h=1: 498/41218 (1.21%) | h=2: 541/40067 (1.35%) | h=3: 581/38913 (1.49%) | h=4: 621/37760 (1.64%)
+  MLP      = MLPBaseline  params=3713
+  nograph  = STGNN        params=8875
+  random   = STGNN        params=8875
+  true     = STGNN        params=8875
+  SID      = STGNN_SID    params=8878
+
+===== PRIMARY DECOMPOSITION (h=3) — leave-one-parcel-out, paired over (fold, seed), n = 2 x 20 = 40 =====
+  [910.3s of training]
+
+  ----- horizon h=3 census steps (no-skill AUC-PR = test pos-rate) -----
+    fold 44A (test pos-rate 4.71%): MLP 0.166  nograph 0.172  random 0.170  true 0.178  SID 0.160
+    fold 44B (test pos-rate 4.66%): MLP 0.158  nograph 0.157  random 0.164  true 0.186  SID 0.145
+    temporal (nograph-MLP)                      : +0.0021+/-0.0092  sign 21/40  [INCONCLUSIVE]   per-fold 44A +0.0057 14/20 | 44B -0.0016 7/20
+    prevalence (random-nograph)                 : +0.0021+/-0.0079  sign 25/40  [INCONCLUSIVE]   per-fold 44A -0.0026 6/20 | 44B +0.0068 19/20
+    STRUCTURE (true-random)                     : +0.0151+/-0.0081  sign 39/40  [POS]   per-fold 44A +0.0084 19/20 | 44B +0.0219 20/20
+    total graph (true-nograph)                  : +0.0172+/-0.0126  sign 36/40  [POS]   per-fold 44A +0.0057 16/20 | 44B +0.0287 20/20
+    total STGNN-MLP (true-MLP)                  : +0.0193+/-0.0130  sign 36/40  [POS]   per-fold 44A +0.0114 16/20 | 44B +0.0271 20/20
+    SI(D) head (SID-true) *NOT vs synth SEIR*   : -0.0293+/-0.0186  sign 4/40  [NEG]   per-fold 44A -0.0184 3/20 | 44B -0.0403 1/20
+
+  leakage sentinel: clean (no model is implausibly far above the no-skill line)
+
+===== HORIZON ROBUSTNESS (h=(1, 2, 4)) — REDUCED seed count 4 (n = 8 paired units), NOT 20. Read these as a shape check, not as the primary table. =====
+  [492.2s of training]
+
+  ----- horizon h=1 census steps (no-skill AUC-PR = test pos-rate) -----
+    fold 44A (test pos-rate 1.70%): MLP 0.062  nograph 0.068  random 0.070  true 0.074  SID 0.058
+    fold 44B (test pos-rate 1.61%): MLP 0.058  nograph 0.059  random 0.062  true 0.068  SID 0.061
+    temporal (nograph-MLP)                      : +0.0037+/-0.0031  sign 7/8  [POS]   per-fold 44A +0.0065 4/4 | 44B +0.0008 3/4
+    prevalence (random-nograph)                 : +0.0026+/-0.0023  sign 7/8  [POS]   per-fold 44A +0.0016 3/4 | 44B +0.0037 4/4
+    STRUCTURE (true-random)                     : +0.0049+/-0.0052  sign 7/8  [INCONCLUSIVE]   per-fold 44A +0.0041 3/4 | 44B +0.0056 4/4
+    total graph (true-nograph)                  : +0.0075+/-0.0045  sign 8/8  [POS]   per-fold 44A +0.0057 4/4 | 44B +0.0093 4/4
+    total STGNN-MLP (true-MLP)                  : +0.0112+/-0.0040  sign 8/8  [POS]   per-fold 44A +0.0122 4/4 | 44B +0.0101 4/4
+    SI(D) head (SID-true) *NOT vs synth SEIR*   : -0.0115+/-0.0072  sign 0/8  [NEG]   per-fold 44A -0.0161 0/4 | 44B -0.0069 0/4
+
+  ----- horizon h=2 census steps (no-skill AUC-PR = test pos-rate) -----
+    fold 44A (test pos-rate 3.22%): MLP 0.114  nograph 0.124  random 0.124  true 0.131  SID 0.103
+    fold 44B (test pos-rate 3.12%): MLP 0.106  nograph 0.107  random 0.111  true 0.123  SID 0.105
+    temporal (nograph-MLP)                      : +0.0055+/-0.0069  sign 7/8  [INCONCLUSIVE]   per-fold 44A +0.0096 4/4 | 44B +0.0014 3/4
+    prevalence (random-nograph)                 : +0.0019+/-0.0030  sign 7/8  [INCONCLUSIVE]   per-fold 44A -0.0001 3/4 | 44B +0.0040 4/4
+    STRUCTURE (true-random)                     : +0.0094+/-0.0047  sign 8/8  [POS]   per-fold 44A +0.0069 4/4 | 44B +0.0119 4/4
+    total graph (true-nograph)                  : +0.0114+/-0.0055  sign 8/8  [POS]   per-fold 44A +0.0068 4/4 | 44B +0.0159 4/4
+    total STGNN-MLP (true-MLP)                  : +0.0169+/-0.0077  sign 8/8  [POS]   per-fold 44A +0.0164 4/4 | 44B +0.0173 4/4
+    SI(D) head (SID-true) *NOT vs synth SEIR*   : -0.0230+/-0.0088  sign 0/8  [NEG]   per-fold 44A -0.0274 0/4 | 44B -0.0185 0/4
+
+  ----- horizon h=4 census steps (no-skill AUC-PR = test pos-rate) -----
+    fold 44A (test pos-rate 5.94%): MLP 0.191  nograph 0.196  random 0.194  true 0.199  SID 0.171
+    fold 44B (test pos-rate 6.00%): MLP 0.188  nograph 0.188  random 0.194  true 0.216  SID 0.159
+    temporal (nograph-MLP)                      : +0.0023+/-0.0053  sign 4/8  [INCONCLUSIVE]   per-fold 44A +0.0041 2/4 | 44B +0.0005 2/4
+    prevalence (random-nograph)                 : +0.0019+/-0.0079  sign 5/8  [INCONCLUSIVE]   per-fold 44A -0.0017 2/4 | 44B +0.0056 3/4
+    STRUCTURE (true-random)                     : +0.0137+/-0.0112  sign 7/8  [POS]   per-fold 44A +0.0051 3/4 | 44B +0.0223 4/4
+    total graph (true-nograph)                  : +0.0157+/-0.0125  sign 7/8  [POS]   per-fold 44A +0.0034 3/4 | 44B +0.0279 4/4
+    total STGNN-MLP (true-MLP)                  : +0.0180+/-0.0124  sign 7/8  [POS]   per-fold 44A +0.0075 3/4 | 44B +0.0284 4/4
+    SI(D) head (SID-true) *NOT vs synth SEIR*   : -0.0426+/-0.0145  sign 0/8  [NEG]   per-fold 44A -0.0282 0/4 | 44B -0.0569 0/4
+
+  leakage sentinel: clean (no model is implausibly far above the no-skill line)
+
+===== GENOTYPE-CONTROLLED PERMUTATION NULL (REAL Eg9PP, 1200 palms x 45 censuses) =====
+  strata sizes: global: 1 strata, median 1200 | progeny: 14 strata, median 75 | progeny_parcel: 28 strata, median 45 | plot: 80 strata, median 15
+  observed neighbour risk ratio (>=1 symptomatic neighbour vs 0):
+    h=1: RR 5.17x  (MH 1.63x)  exposed 516/14957 = 3.45%  unexposed 180/26957 = 0.67%
+    h=2: RR 4.74x  (MH 1.63x)  exposed 946/14454 = 6.54%  unexposed 372/26931 = 1.38%
+    h=3: RR 4.47x  (MH 1.65x)  exposed 1337/13926 = 9.60%  unexposed 578/26902 = 2.15%
+    h=4: RR 4.06x  (MH 1.63x)  exposed 1602/13325 = 12.02%  unexposed 794/26831 = 2.96%
+  --- null: permute within global (500 permutations) ---
+    h=1 RR   : obs 5.17x vs null 3.88+/-0.23  excess 1.33x  z=+5.6  perms>=obs 0/500
+    h=1 RR_MH: obs 1.63x vs null 1.00+/-0.11  excess 1.64x  z=+6.0  perms>=obs 0/500
+    h=2 RR   : obs 4.74x vs null 3.53+/-0.20  excess 1.34x  z=+6.0  perms>=obs 0/500
+    h=2 RR_MH: obs 1.63x vs null 1.00+/-0.10  excess 1.64x  z=+6.2  perms>=obs 0/500
+    h=3 RR   : obs 4.47x vs null 3.29+/-0.18  excess 1.36x  z=+6.5  perms>=obs 0/500
+    h=3 RR_MH: obs 1.65x vs null 1.00+/-0.10  excess 1.65x  z=+6.7  perms>=obs 0/500
+    h=4 RR   : obs 4.06x vs null 2.99+/-0.16  excess 1.36x  z=+6.6  perms>=obs 0/500
+    h=4 RR_MH: obs 1.63x vs null 1.00+/-0.09  excess 1.63x  z=+6.7  perms>=obs 0/500
+  --- null: permute within progeny (500 permutations) ---
+    h=1 RR   : obs 5.17x vs null 4.13+/-0.24  excess 1.25x  z=+4.4  perms>=obs 0/500
+    h=1 RR_MH: obs 1.63x vs null 1.13+/-0.11  excess 1.45x  z=+4.6  perms>=obs 0/500
+    h=2 RR   : obs 4.74x vs null 3.73+/-0.21  excess 1.27x  z=+4.8  perms>=obs 0/500
+    h=2 RR_MH: obs 1.63x vs null 1.12+/-0.10  excess 1.46x  z=+5.1  perms>=obs 0/500
+    h=3 RR   : obs 4.47x vs null 3.46+/-0.19  excess 1.29x  z=+5.3  perms>=obs 0/500
+    h=3 RR_MH: obs 1.65x vs null 1.11+/-0.10  excess 1.48x  z=+5.6  perms>=obs 0/500
+    h=4 RR   : obs 4.06x vs null 3.14+/-0.17  excess 1.29x  z=+5.5  perms>=obs 0/500
+    h=4 RR_MH: obs 1.63x vs null 1.11+/-0.09  excess 1.47x  z=+5.7  perms>=obs 0/500
+  --- null: permute within progeny_parcel (500 permutations) ---
+    h=1 RR   : obs 5.17x vs null 4.17+/-0.23  excess 1.24x  z=+4.3  perms>=obs 0/500
+    h=1 RR_MH: obs 1.63x vs null 1.15+/-0.11  excess 1.42x  z=+4.5  perms>=obs 0/500
+    h=2 RR   : obs 4.74x vs null 3.76+/-0.21  excess 1.26x  z=+4.8  perms>=obs 0/500
+    h=2 RR_MH: obs 1.63x vs null 1.13+/-0.10  excess 1.44x  z=+4.9  perms>=obs 0/500
+    h=3 RR   : obs 4.47x vs null 3.50+/-0.19  excess 1.28x  z=+5.2  perms>=obs 0/500
+    h=3 RR_MH: obs 1.65x vs null 1.13+/-0.10  excess 1.46x  z=+5.3  perms>=obs 0/500
+    h=4 RR   : obs 4.06x vs null 3.18+/-0.17  excess 1.28x  z=+5.3  perms>=obs 0/500
+    h=4 RR_MH: obs 1.63x vs null 1.12+/-0.09  excess 1.45x  z=+5.4  perms>=obs 0/500
+  --- null: permute within plot (500 permutations) ---
+    h=1 RR   : obs 5.17x vs null 4.58+/-0.25  excess 1.13x  z=+2.3  perms>=obs 7/500
+    h=1 RR_MH: obs 1.63x vs null 1.35+/-0.12  excess 1.21x  z=+2.4  perms>=obs 6/500
+    h=2 RR   : obs 4.74x vs null 4.13+/-0.22  excess 1.15x  z=+2.8  perms>=obs 4/500
+    h=2 RR_MH: obs 1.63x vs null 1.33+/-0.11  excess 1.23x  z=+2.8  perms>=obs 2/500
+    h=3 RR   : obs 4.47x vs null 3.84+/-0.20  excess 1.16x  z=+3.1  perms>=obs 0/500
+    h=3 RR_MH: obs 1.65x vs null 1.32+/-0.10  excess 1.24x  z=+3.1  perms>=obs 1/500
+    h=4 RR   : obs 4.06x vs null 3.47+/-0.18  excess 1.17x  z=+3.3  perms>=obs 0/500
+    h=4 RR_MH: obs 1.63x vs null 1.31+/-0.10  excess 1.25x  z=+3.3  perms>=obs 0/500
+  [23.7s]  PRIMARY null = within-progeny. The `global` row is the naive null and is expected to be too small — it is a control, not a result.
+
+saved C:\Users\Brian\Desktop\Project\AI CONCEPT PAPER\layer2_real\results_real.csv (152 rows)
+
+TOTAL 1426.5s on cpu  [dataset = REAL]

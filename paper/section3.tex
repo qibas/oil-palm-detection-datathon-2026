@@ -1,0 +1,292 @@
+% ---------------------------------------------------------------------------
+% SawitGuard-GNN --- Bab 3 "Solusi Usulan"
+% Tempel ke badan paper. Butuh: \usepackage{graphicx}
+% Figur: fig_pipeline.png (dihasilkan oleh ../fig_pipeline.py)
+%
+% Konvensi yang ditiru dari paper acuan: Bab 3 memuat RANCANGAN saja --- tidak ada
+% satu pun angka HASIL MODEL. Angka yang muncul di sini seluruhnya adalah
+% DESKRIPSI DATA (jumlah, jarak, derajat), bukan metrik performa; metrik masuk Bab 4.
+%
+% REVISI 2026-07-23: disusun ulang dari "dua lapisan terputus" menjadi SATU pipeline
+% berkelanjutan enam tahap. Jembatan yang dulu digambar putus-putus kini terisi oleh
+% Tahap 4 (rekonstruksi geometri kebun dari nama berkas ubin) --- lihat
+% ../layer1_build/stitch_probe.py.
+% ---------------------------------------------------------------------------
+
+\section{Solusi Usulan}
+
+Solusi yang dikembangkan adalah sebuah konsep sistem estimasi risiko penularan
+antar-pohon pada perkebunan kelapa sawit, yang mengalirkan citra UAV mentah menjadi
+angka peluang per-pohon: bagi setiap pohon yang \textit{hari ini masih tampak sehat},
+berapa besar kemungkinan pohon tersebut tertular dalam beberapa siklus survei ke depan.
+Pertanyaan yang dijawab bukan ``pohon mana yang sakit'' --- itu pekerjaan pengamatan,
+bukan peramalan --- melainkan \textbf{ke mana penyakit akan bergerak selanjutnya, dan
+apa sesungguhnya yang menentukan arah gerak itu}. Rumusan tersebut dipilih karena hanya
+inilah pertanyaan yang dapat dijawab secara sahih dengan data yang tersedia, dan karena
+keluarannya, yaitu daftar pohon berperingkat risiko, adalah bentuk yang langsung dapat
+dipakai tim kebun untuk mengarahkan inspeksi darat alih-alih menyisir seluruh blok.
+
+Pipeline disusun sebagai enam tahap berurutan, dari piksel sampai peluang, dan dirangkum
+pada Gambar~\ref{fig:pipeline}. Tiga tahap pertama bekerja pada citra UAV nyata dan
+menghasilkan inventaris tajuk. Tahap keempat merekonstruksi tata letak kebun yang
+sebenarnya dari inventaris tersebut. Dua tahap terakhir menjalankan dinamika penularan
+di atas tata letak nyata itu dan menerjemahkan keluaran model menjadi persentase risiko
+yang terkalibrasi.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{fig_pipeline.png}
+  \caption{Pipeline enam tahap SawitGuard-GNN, dari citra UAV sampai persentase risiko
+  per-pohon. Tahap 1--4 berjalan pada data nyata; Tahap 5 menjalankan dinamika penularan
+  sintetis di atas geometri kebun yang nyata; Tahap 6 mengubah skor model menjadi peluang
+  terkalibrasi. Batas antara yang nyata dan yang disimulasikan ditandai eksplisit dan
+  dirinci pada Tabel~\ref{tab:data}.}
+  \label{fig:pipeline}
+\end{figure}
+
+\subsection{Tahap 1--3 --- Dari Citra UAV Menjadi Inventaris Tajuk}
+
+Tiga tahap pertama mengubah citra UAV RGB bersudut nadir menjadi daftar tajuk sawit
+yang masing-masing disertai posisi, ukuran, dan skor kesehatan.
+
+\textbf{Deteksi tajuk} memakai YOLO11 untuk menemukan setiap tajuk sawit di dalam ubin
+citra dan memberinya kotak pembatas. Keluaran tahap ini adalah koordinat piksel pusat
+tajuk beserta lebar dan tingginya --- dan koordinat inilah, bukan sekadar hitungan
+jumlah pohon, yang kelak menjadi tulang punggung Tahap~4.
+
+\textbf{Estimasi luas tajuk} mengambil setiap kotak hasil deteksi dan memisahkan piksel
+tajuk dari piksel tanah memakai indeks \textit{Excess Green} yang diambangkan dengan
+metode Otsu. Pendekatan ini sengaja dipilih tanpa pelatihan, sebab data yang tersedia
+hanya menyediakan kotak pembatas dan \textbf{tidak memiliki \textit{mask}
+kebenaran-dasar}. Konsekuensinya dinyatakan di muka dan tidak dilunakkan: tahap ini
+diperlakukan sebagai demonstrasi kualitatif belaka, tidak ada klaim IoU yang dapat
+dipertanggungjawabkan, dan karena itu tidak ada yang diajukan. Luas tajuk dipakai
+sebagai proksi ukuran kanopi, yang berguna sebagai penciri ukuran pohon pada tahap
+berikutnya, bukan sebagai hasil segmentasi yang divalidasi.
+
+\textbf{Penilaian kesehatan tajuk} menghitung statistik warna dan tekstur kanal RGB di
+dalam setiap kotak --- simpangan baku kanal merah, selisih hijau--merah, rerata kanal
+biru, selisih hijau--biru --- lalu mengklasifikasikannya dengan LightGBM. Pemilihan
+fitur ini disengaja dan bukan hasil pencarian buta: klorosis, yaitu gejala visual yang
+membuat tajuk menguning, memang termanifestasi sebagai pergeseran kehijauan, sehingga
+fitur yang dipilih memiliki alasan agronomis sebelum diuji secara empiris.
+
+\subsection{Tahap 4 --- Rekonstruksi Geometri Kebun}
+
+Tahap keempat adalah penghubung yang membuat pipeline ini berkelanjutan, dan merupakan
+tambahan utama pada rancangan ini. Persoalannya sederhana namun menentukan: model
+penularan membutuhkan \textbf{peta posisi pohon}, sedangkan Tahap~1 hanya menghasilkan
+koordinat di dalam ubin citra selebar 1.024 piksel yang saling terpisah.
+
+Kunci pemecahannya terletak pada penamaan berkas ubin, yang menyimpan offset piksel
+absolut ubin tersebut di dalam ortomosaik induknya. Dengan menjumlahkan offset ubin dan
+posisi pusat kotak pembatas, setiap tajuk memperoleh \textbf{koordinat global} di dalam
+ortomosaiknya. Seluruh ubin dengan demikian dapat dijahit kembali menjadi satu awan
+titik yang merepresentasikan tata letak kebun yang sebenarnya.
+
+Satu langkah pembersihan wajib menyertainya. Ubin-ubin pada data ini beririsan sangat
+rapat, sehingga satu pohon yang sama muncul berulang kali pada ubin yang berbeda-beda.
+Deteksi ganda tersebut digabungkan dengan aturan jarak: dua deteksi yang terpisah kurang
+dari setengah ukuran tajuk median dianggap pohon yang sama. Besarnya penggabungan yang
+terjadi --- dan implikasinya terhadap ukuran sampel efektif --- dilaporkan apa adanya
+pada Subbab~3.6, sebab hal itu mengubah cara seluruh hasil Lapisan~1 harus dibaca.
+
+Awan titik hasil rekonstruksi lalu dikonversi ke satuan meter. Faktor konversinya
+diperoleh dengan mengukur jarak tetangga terdekat antar pohon dan memadankannya dengan
+jarak tanam sawit yang lazim, yaitu sekitar 9~m. Konsistensi hasilnya menjadi
+pemeriksaan-silang yang berdiri sendiri: ketiga ortomosaik, yang diproses secara
+terpisah, menghasilkan skala yang saling berdekatan, sehingga asumsi jarak tanam
+tersebut tidak bertentangan dengan datanya sendiri.
+
+\subsection{Tahap 5 --- Graf Multi-relasi dan Dinamika Penularan}
+
+Di atas awan titik nyata hasil Tahap~4 dibangun sebuah \textbf{graf multi-relasi} dengan
+tiga relasi yang mewakili tiga jalur penularan yang berbeda sifatnya. Relasi
+\textit{akar} menghubungkan pohon-pohon yang bersentuhan perakaran dalam radius pendek
+dan merupakan jalur terkuat, sesuai pemahaman bahwa \textit{Ganoderma} terutama menyebar
+lewat kontak akar. Relasi \textit{angin} berbentuk kerucut berarah mengikuti angin
+dominan, menjangkau lebih jauh dengan tekanan jauh lebih lemah. Relasi
+\textit{manajemen} menghubungkan pohon-pohon di sepanjang jalur panen yang sama, mewakili
+penularan yang terbawa alat dan lalu lintas pekerja.
+
+Karena graf kini dibangun di atas posisi pohon yang sebenarnya, kerapatan sambungannya
+bukan lagi angka yang dipilih perancang melainkan sifat yang \textbf{terukur dari data}.
+Nilainya dilaporkan pada Tabel~\ref{tab:data} dan berbeda dari kisi ideal --- kebun nyata
+memiliki jarak tanam yang tidak seragam, jalan, dan rumpang tanaman, sehingga rata-rata
+jumlah tetangga sebuah pohon lebih rendah daripada kisi teratur. Perbedaan ini tidak
+diperhalus; sebaliknya, kepekaan hasil terhadap kerapatan sambungan diuji secara
+eksplisit sebagai salah satu ablasi pada Bab~4.
+
+Dinamika penularannya sendiri dibangkitkan dengan model SEIR berjaring
+(\textit{Susceptible}, \textit{Exposed}, \textit{Infected}, \textit{Removed}) selama 20
+siklus survei, dengan satu siklus mewakili kira-kira tiga bulan. Di sinilah batas
+kejujuran pipeline ini harus ditarik dengan tegas, dan ia ditarik di muka: \textbf{tata
+letak kebunnya nyata, tetapi dinamika penularannya disimulasikan}. Seluruh laju epidemi
+--- laju penularan tiap relasi, laju inkubasi $E \rightarrow I$, dan laju $I \rightarrow R$
+--- dipusatkan pada satu berkas konfigurasi dan ditandai eksplisit sebagai
+\textit{placeholder} yang wajib dikalibrasi ke literatur \textit{Ganoderma} sebelum klaim
+lapangan apa pun diajukan. Alasannya bukan kelalaian melainkan ketiadaan data: peramalan
+penyebaran menuntut deret waktu per-pohon dengan status infeksi berlabel, dan data
+semacam itu tidak tersedia untuk BSR di ranah publik.
+
+Fitur node sengaja tidak dibangkitkan secara acak. Setiap pohon memancarkan spektrum
+sesuai keadaannya, diambil dari \textbf{data hiperspektral penyakit layu pinus yang
+nyata}: keadaan $S$ dan $I$ diambil langsung dari data tersebut, keadaan $E$ dibentuk
+sebagai interpolasi $E = (1-\alpha)S + \alpha I$, dan keadaan $R$ diambil dari spektrum
+terinfeksi paling ekstrem. Nilai $\alpha$ dikunci pada 0{,}1, yaitu satu-satunya nilai
+yang membuat keterpisahan $S$ terhadap $E$ berada pada rentang yang menantang namun tidak
+mustahil --- apabila $E$ terlalu mudah dibedakan dari $S$, tugas peringatan dini menjadi
+sepele dan kehilangan makna. Spektrum lalu direduksi dengan PCA dan disatukan dengan
+selisih temporalnya menjadi vektor fitur per pohon per siklus. Dua pengaman melekat di
+sini: penyekala dan PCA \textbf{hanya dipasang pada siklus latih}, dan selisih temporal
+hanya menengok ke siklus sebelumnya, sehingga tidak ada informasi masa depan yang bocor
+ke masukan model. Batasnya tetap dinyatakan terbuka --- spektrum ini berasal dari penyakit
+layu pinus, bukan BSR, dan kompartemen $E$ merupakan interpolasi yang tidak ada dalam data.
+
+\subsection{Tahap 6 --- Model Peramalan dan Estimasi Risiko Terkalibrasi}
+
+Tugas peramalan dirumuskan sebagai pertanyaan peringatan dini: bagi sebuah pohon yang
+masih \textbf{tanpa gejala} pada siklus $t$, apakah pohon tersebut akan menjadi bergejala
+dalam $h$ siklus ke depan? Pohon yang sudah bergejala pada siklus $t$ dikeluarkan dari
+kumpulan contoh, karena meramalkannya bukan peringatan dini melainkan pencatatan. Setiap
+model menerima jendela tiga siklus terakhir dan diuji pada tiga cakrawala waktu.
+Pembagian data bersifat temporal, siklus awal untuk melatih dan siklus akhir untuk menguji.
+
+Tiga model diadu dengan tugas yang persis sama. \textbf{MLP} bekerja per-pohon tanpa graf
+sama sekali dan berperan sebagai garis dasar lapangan. \textbf{STGNN} menambahkan difusi
+multi-relasi dengan bobot perhatian yang dilatih untuk ketiga relasi, lalu meringkas
+riwayatnya dengan GRU. \textbf{STGNN-SEIR} identik dengan STGNN kecuali satu tambahan:
+sebuah kepala SEIR yang dapat dilatih, yang membaca keadaan lunak $(S,E,I)$ dari embedding
+graf dan menduga peluang bergejala memakai laju yang dipelajari serta suku tekanan
+tetangga. Satu pengaman berlaku bagi ketiganya: \textbf{tidak ada model yang pernah
+melihat keadaan SEIR sebenarnya sebagai masukan} --- yang masuk hanyalah fitur spektral
+dan agregat tetangganya. Garis dasar MLP sengaja disetel dengan baik, sebab pertanyaannya
+adalah apakah graf mengungguli model per-pohon yang benar-benar bagus, bukan model lemah
+yang dipasang untuk dikalahkan.
+
+Keluaran mentah ketiga model berupa skor yang hanya sahih sebagai \textbf{peringkat}.
+Skor semacam itu cukup untuk mengurutkan pohon dari paling berisiko ke paling aman, namun
+belum boleh dibaca sebagai persentase --- menyebut sebuah pohon ``berisiko 23\%'' menuntut
+bahwa dari seratus pohon yang diberi angka serupa, kira-kira dua puluh tiga di antaranya
+benar-benar tertular. Tahap terakhir karena itu \textbf{mengkalibrasi} skor menjadi
+peluang, dengan pemeta kalibrasi yang \textbf{hanya dipasang pada siklus latih} dan
+diterapkan apa adanya pada siklus uji. Mutu kalibrasi dilaporkan sebagai kurva keandalan
+beserta skor Brier, sehingga pembaca dapat menilai sendiri apakah angka persentase yang
+dikeluarkan sistem memang berarti seperti yang dituliskannya.
+
+Peluang terkalibrasi itu kemudian diringkas menjadi bentuk yang dapat dipakai di lapangan.
+Pohon dikelompokkan ke dalam tingkat risiko, dan pada tiap tingkat dilaporkan presisi
+pada-$k$-teratas: apabila tim kebun hanya sanggup memeriksa sejumlah pohon dalam satu
+siklus, berapa banyak di antaranya yang memang akan tertular. Metrik inilah yang
+menjembatani keluaran statistik dengan keputusan operasional, dan ia dilaporkan
+berdampingan dengan \textit{lead time} --- berapa siklus lebih awal peringatan muncul
+sebelum gejala tampak --- sebab sebuah model dapat unggul pada peringkat namun tidak
+memberi keuntungan waktu apa pun di lapangan.
+
+\subsection{Data}
+
+Seluruh sumber data, jumlahnya, dan status nyata atau sintetisnya dirangkum pada
+Tabel~\ref{tab:data}. Tabel ini sengaja mencantumkan kedua angka jumlah tajuk --- jumlah
+anotasi mentah dan jumlah pohon unik setelah rekonstruksi Tahap~4 --- karena selisih
+keduanya sangat besar dan menentukan bagaimana hasil Lapisan~1 harus dibaca.
+
+\begin{table}[h]
+\centering
+\caption{Sumber data tiap tahap, beserta status nyata atau sintetisnya. Angka tajuk
+dilaporkan dalam dua bentuk: anotasi mentah, dan pohon unik setelah deteksi ganda
+antar-ubin digabungkan pada Tahap~4.}
+\label{tab:data}
+\begin{tabular}{llll}
+\hline
+\textbf{Tahap} & \textbf{Sumber dan jumlah} & \textbf{Label} & \textbf{Status} \\
+\hline
+1--3. Inventaris tajuk & 3 ortomosaik UAV RGB nadir; 2.303 ubin 1.024 px; 151.060 kotak anotasi & Healthy / Unhealthy (kesehatan tajuk generik, bukan BSR) & Nyata \\
+4. Geometri kebun & 5.077 pohon unik (1.379 / 1.849 / 1.849 per ortomosaik); 96,6\% anotasi adalah deteksi ganda antar-ubin & Posisi global per pohon & Nyata (diturunkan) \\
+4. Skala dan luas & Jarak tetangga terdekat median 101--106 px; skala 8,5--8,9 cm/px; luas blok 16,9 / 17,6 / 18,8 ha & Jarak tanam acuan 9 m (asumsi kalibrasi) & Nyata (terukur) \\
+5. Struktur graf & Derajat relasi akar terukur 5,37--5,52 pada radius 13 m & Tiga relasi: akar, angin, manajemen & Nyata (topologi) \\
+5. Dinamika penularan & SEIR berjaring, 20 siklus survei, 1 siklus $\approx$ 3 bulan & Status S/E/I/R per pohon per siklus & Sintetis (laju placeholder) \\
+5. Fitur node & Spektra hiperspektral penyakit layu pinus & Spektrum per keadaan; $E$ interpolasi $\alpha = 0,1$ & Nyata tetapi penyakit lain \\
+6. Kalibrasi risiko & Pemeta kalibrasi dipasang pada siklus latih saja & Peluang tertular dalam $h$ siklus & Diturunkan dari Tahap 5 \\
+\hline
+\end{tabular}
+\end{table}
+
+Pembacaan yang jujur atas tabel ini adalah sebagai berikut. Segala sesuatu yang menyangkut
+\textbf{ruang} --- di mana pohon berdiri, seberapa rapat, siapa bertetangga dengan siapa,
+berapa luas bloknya --- bersumber dari data nyata dan terukur. Segala sesuatu yang
+menyangkut \textbf{waktu} --- kapan sebuah pohon tertular, seberapa cepat penyakit
+menjalar, berapa lama masa inkubasinya --- disimulasikan. Pipeline ini karena itu dapat
+menguji apakah sebuah model peramalan benar-benar memanfaatkan struktur ruang yang nyata,
+tetapi belum dapat menguji apakah penyebaran BSR yang sesungguhnya mengikuti dinamika yang
+diasumsikan.
+
+\subsection{Protokol Evaluasi Anti-Kebocoran}
+
+Protokol evaluasi ditetapkan sebelum hasil dilihat, dan berbeda untuk tiap tahap karena
+sumber kebocorannya berbeda.
+
+Pada \textbf{Tahap 1--3} hanya tersedia tiga ortomosaik. Rekonstruksi Tahap~4 mengungkap
+bahwa ubin-ubin di dalam satu ortomosaik beririsan jauh lebih rapat daripada yang tampak:
+dari 151.060 kotak anotasi hanya tersisa 5.077 pohon unik, sehingga rata-rata setiap pohon
+tercatat sekitar tiga puluh kali pada ubin yang berlainan. Pembagian acak karena itu tidak
+sekadar berisiko bocor, melainkan \textbf{pasti bocor}: ubin yang memuat pohon yang sama
+akan tersebar ke sisi latih dan sisi uji sekaligus. Seluruh evaluasi karena itu memakai
+\textbf{validasi silang blok \textit{leave-one-ortho-out}}, yaitu setiap lipatan menahan
+satu ortomosaik utuh, dan asal ortomosaik dibaca dari nama berkas tiap ubin.
+
+Pengulangan tiga puluh kali lipat itu membawa satu konsekuensi lagi yang harus dinyatakan
+dan tidak boleh disembunyikan di balik jumlah baris yang besar: \textbf{daya statistik
+sesungguhnya jauh lebih kecil daripada yang disiratkan angka 151.060}. Pada tingkat pohon
+unik, kelas \textit{Unhealthy} hanya berjumlah \textbf{66 pohon} di seluruh tiga ortomosaik
+--- 17, 31, dan 18 pohon pada masing-masing lipatan. Setiap selang kepercayaan karena itu
+harus dihitung pada tingkat pohon unik, bukan tingkat anotasi, dan setiap hasil Lapisan~1
+harus dibaca sebagai berbasis sampel kecil. Metriknya
+adalah mAP untuk deteksi serta PR-AUC dan ROC-AUC untuk kesehatan. Akurasi tidak
+dilaporkan: pada ketimpangan kelas seekstrem ini, pengklasifikasi yang selalu menjawab
+\textit{Healthy} sudah mencapai akurasi di atas 98\% tanpa memiliki kegunaan apa pun.
+
+Pada \textbf{Tahap 5--6} setiap konfigurasi dijalankan pada 20 \textit{seed} dan
+dilaporkan sebagai rerata $\pm$ simpangan baku. Perbandingan antarmodel dilakukan
+\textbf{berpasangan per-\textit{seed}}, disertai hitungan tanda yang menunjukkan pada
+berapa dari 20 \textit{seed} sebuah model unggul --- sebab menang tipis pada 20 dari 20
+\textit{seed} dan menang besar pada 11 dari 20 adalah dua pernyataan yang sangat berbeda.
+Aturan keputusannya ditetapkan di muka: apabila nilai mutlak rerata selisih lebih kecil
+daripada simpangan bakunya, hasil dinyatakan \textbf{tidak konklusif} dan tidak pernah
+dibulatkan menjadi kemenangan.
+
+\subsection{Rancangan Ablasi --- Apa yang Sebenarnya Menentukan Risiko}
+
+Selisih ``STGNN dikurangi MLP'' saja tidak dapat ditafsirkan, karena mencampur tiga efek
+yang berbeda menjadi satu angka. Rancangan ablasi karena itu memisahkannya dengan cara
+menukar \textbf{tampilan graf} yang dilihat model sambil menahan arsitekturnya tetap sama:
+tampilan \textit{asli} berisi graf kontak yang dibangun di atas geometri kebun nyata,
+tampilan \textit{tanpa-graf} menihilkan seluruh sisi, tampilan \textit{acak}
+mempertahankan derajat yang sama tetapi merusak strukturnya, dan tampilan
+\textit{perturbasi} menginterpolasi keduanya menurut parameter $\varepsilon$. Ketiga
+selisih berikut bersifat aditif dan menyusun keseluruhan selisih STGNN--MLP:
+
+\begin{itemize}\itemsep2pt
+  \item \textbf{temporal} $=$ tanpa-graf $-$ MLP --- nilai dari sekadar memodelkan
+        riwayat pohon itu sendiri;
+  \item \textbf{prevalensi} $=$ acak $-$ tanpa-graf --- nilai dari mengetahui
+        \textit{seberapa banyak} penyakit ada di sekitar, tanpa mengetahui di mana;
+  \item \textbf{struktur} $=$ asli $-$ acak --- nilai dari mengetahui \textit{siapa
+        persis} tetangga sebuah pohon.
+\end{itemize}
+
+Dekomposisi inilah inti ilmiah paper ini, sebab ia menjawab langsung pertanyaan yang
+diajukan pada awal bab: apa yang sesungguhnya menentukan risiko penularan sebuah pohon.
+Komponen \textbf{struktur} adalah yang mempertaruhkan premis pendekatan berbasis graf.
+Apabila peta kontak multi-relasi memang penting, komponen inilah yang harus besar;
+apabila kecil, keunggulan model graf sesungguhnya berasal dari pemodelan waktu dan
+tekanan wabah agregat, dan hal itu wajib dinyatakan sebagai temuan, bukan disembunyikan
+di balik selisih agregat. Dekomposisi ini dirancang justru untuk membuka kemungkinan
+tersebut, dan kesimpulannya dilaporkan pada Bab~4 apa adanya, ke arah mana pun ia jatuh.
+
+Dua ablasi pendamping menguji ketahanan kesimpulan itu. Yang pertama merusak peta kontak
+secara bertahap menurut $\varepsilon$ untuk melihat pada tingkat kesalahan peta berapa
+keunggulan graf lenyap. Yang kedua menyapu kerapatan sambungan relasi akar, dan justru di
+sinilah geometri nyata hasil Tahap~4 memperoleh perannya yang paling menentukan: derajat
+yang terukur dari kebun sebenarnya harus berada di dalam rentang yang disapu, sebab hanya
+dengan begitu kesimpulan yang ditarik dari simulasi dapat diklaim berlaku pada kerapatan
+tanam yang nyata.
