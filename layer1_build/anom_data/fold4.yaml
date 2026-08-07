@@ -1,0 +1,6 @@
+path: C:\Users\Brian\Desktop\Project\Datathon 2026\AI CONCEPT PAPER\polished AI_concept paper\layer1_build\anom_data
+train: fold4_train.txt
+val: fold4_val.txt
+names:
+  0: PalmSan
+  1: PalmAnom
