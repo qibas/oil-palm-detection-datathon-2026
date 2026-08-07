@@ -1,1 +1,18 @@
-/.claude
+# Lingkungan & perkakas
+.claude/
+.venv/
+__pycache__/
+*.pyc
+
+# Direktori data turunan - dibangun ulang dalam hitungan detik, jangan dilacak.
+#   layer1_build/yolo12*/  <- y12.build()      (hardlink ds_B + label YOLO)
+# CATATAN: layer1_build/ds_B/ dan layer1_build/anom_data/ SUDAH terlacak sejak
+# branch testing_stage1; menambahkannya di sini tidak akan melepaskannya.
+layer1_build/yolo12/
+layer1_build/yolo12_1c/
+
+# Cache pemindaian label Ultralytics
+*.cache
+
+# Cadangan otomatis dari train_folds_gpu.py
+*.bak-*.json
