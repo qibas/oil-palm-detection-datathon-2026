@@ -1,0 +1,74 @@
+{
+  "produced_by": "layer2_real/export_risk.py",
+  "checkpoint": "stgnn_final.pt",
+  "scope_warning": "Trained on ALL 1,200 palms with no held-out set. This is an INFERENCE artifact, not an evaluation artifact. No performance number may be quoted from this model; performance numbers come only from run_real.py / run_v2.py (leave-one-parcel-out). Its output is a RELATIVE score for ranking, not a calibrated probability -- never present sigmoid(logit) as a '% chance of infection'.",
+  "census": {
+    "index": 41,
+    "t_years": 24.0,
+    "note": "most recent census valid for this horizon"
+  },
+  "task": {
+    "horizon": 3,
+    "window": 3,
+    "risk_status": "A",
+    "pos_status": [
+      "S",
+      "D"
+    ],
+    "output": "relative logit for ranking; NOT a calibrated probability"
+  },
+  "model": {
+    "class": "STGNN",
+    "arch": {
+      "in_dim": 24,
+      "hidden": 34,
+      "n_rel": 1
+    },
+    "n_params": 8875
+  },
+  "training_summary": {
+    "dataset_tag": "REAL",
+    "fold": "NONE -- all 1,200 palms, both parcels",
+    "n_examples": 40828,
+    "n_positives": 1915,
+    "pos_rate": 0.04690408706665039,
+    "n_palms_touched": 1194,
+    "epochs": 60,
+    "lr": 0.005,
+    "weight_decay": 0.0001,
+    "seed": 0,
+    "loss": "focal(gamma=2.0, alpha=0.75)",
+    "final_loss": 0.022200118750333786,
+    "n_params": 8875,
+    "device": "cpu"
+  },
+  "data_fingerprint": {
+    "feature_sha256": "70ef7eb522284fd72f6ad6f757094b9caba5a6a6abbbbd3a0500df54d7a5aa49",
+    "adjacency_sha256": "1ed21d8948b3f65a7748cf122846606c846f4663b3545a9bf688714c2ddac9b1",
+    "source_csv": [
+      "layer2_nodes.csv",
+      "layer2_panel.csv",
+      "layer2_edges.csv"
+    ]
+  },
+  "rows": {
+    "total": 1200,
+    "scored": 672,
+    "outside_risk_set": 528
+  },
+  "columns": {
+    "rank": "1 = highest risk, within the risk set only; empty otherwise",
+    "in_risk_set": "1 if status was 'A' at this census and the palm is scorable",
+    "status": "A asymptomatic | S symptomatic | D dead | C censored",
+    "logit": "raw model output, monotone in risk, unitless. NOT a probability",
+    "risk_percentile": "0-100 rank within the risk set",
+    "risk_decile": "1-10 quantile band, 10 = highest risk",
+    "n_neighbours": "graph degree at r = 1.5 x planting spacing",
+    "n_sick_neighbours": "neighbours with status S or D at this census"
+  },
+  "prohibited_uses": [
+    "Do not quote any performance metric from this file; the model has no held-out set.",
+    "Do not convert `logit` to a probability. It is uncalibrated.",
+    "Do not treat an empty score as low risk; those palms are already symptomatic, dead or censored."
+  ]
+}
