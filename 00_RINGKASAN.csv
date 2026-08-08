@@ -1,5 +1,10 @@
 lapisan,eksperimen,item,mean,std,n,sign,vonis,catatan
-L1 UAV,demonstrator,mAP50,0.758,,1.0,,,"YOLO11n, 1 lipatan, 15 epoch"
+L1 UAV,demonstrator,F1 pusat tajuk (METRIK UTAMA),0.960,0.024,3.0,,,"YOLOv12n, 3 ortho x 30 epoch; conf 0,75 dipilih silang-lipatan"
+L1 UAV,demonstrator,presisi pusat tajuk,0.950,0.019,3.0,,,"pohon unik; radius cocok 0,5 x jarak tanam"
+L1 UAV,demonstrator,recall pusat tajuk,0.971,0.030,3.0,,,
+L1 UAV,demonstrator,RMSE pusat (x jarak tanam),0.071,0.011,3.0,,,F1 datar terhadap radius -> pusat memang tepat
+L1 UAV,demonstrator,mAP50,0.687,0.071,3.0,,,"metrik SEKUNDER, berlangit-langit: kotak GT = cap ukuran tetap"
+L1 UAV,demonstrator,mAP50-95,0.425,0.078,3.0,,,idem; lihat layer1_build/LABEL_QUALITY_AUDIT.md
 L1 UAV,demonstrator,PR-AUC kesehatan,0.182,0.059,3.0,,,block-CV 3 ortho; acak=0.013
 L1 UAV,demonstrator,ROC-AUC kesehatan,0.861,,3.0,,,
 L1 UAV,demonstrator,PR-AUC is_unbalance,0.181,0.091,3.0,,,d=0.001 -> DITOLAK
@@ -47,5 +52,6 @@ L2 Eg9PP,null permutasi h=3,RR,4.4685,,500.0,0/500,,null 3.46+/-0.19; kelebihan 
 L2 Eg9PP,null permutasi h=3,RR_MH,1.6462,,500.0,0/500,,null 1.11+/-0.10; kelebihan 1.48x; z=+5.6
 L2 Eg9PP,null permutasi h=4,RR,4.0627,,500.0,0/500,,null 3.14+/-0.17; kelebihan 1.29x; z=+5.5
 L2 Eg9PP,null permutasi h=4,RR_MH,1.6287,,500.0,0/500,,null 1.11+/-0.09; kelebihan 1.47x; z=+5.7
-jembatan,uji lebar sepur,derajat @1.5x L1,5.62,,,,,kotak ground-truth = batas atas
-jembatan,uji lebar sepur,derajat @1.5x L2,5.74,,,,,selisih 2%
+jembatan,uji lebar sepur,derajat @1.5x L1 (prediksi detektor),5.54,0.12,3.0,,,"YOLOv12n 3 ortho, pohon dalam; conf dipilih silang-lipatan"
+jembatan,uji lebar sepur,derajat @1.5x L1 (kotak GT),5.62,0.05,3.0,,,"pembanding; biaya memakai detektor = 1,4%"
+jembatan,uji lebar sepur,derajat @1.5x L2,5.74,,,,,"selisih 3,5% thd prediksi; 5,74 DI LUAR pita +/-0,12"

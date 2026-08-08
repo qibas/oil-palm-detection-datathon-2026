@@ -19,7 +19,7 @@ Targetnya **bukan** mendiagnosis pohon yang sudah sakit. Targetnya pohon yang **
   ┌──────────────────── LAPISAN 1 — Penginderaan ────────────────────┐
   │  Citra UAV RGB nadir · 3 ortomosaik · GSD ≈ 8,7 cm/px            │
   │                              │                                   │
-  │   [1] Deteksi tajuk          │  YOLO11n        → mAP50 0,758     │
+  │   [1] Deteksi tajuk          │  YOLOv12n       → F1 pusat 0,960  │
   │                              ▼                                   │
   │   [2] Kesehatan tajuk        │  LightGBM       → PR-AUC 0,182    │
   │                              ▼                                   │
@@ -31,9 +31,9 @@ Targetnya **bukan** mendiagnosis pohon yang sudah sakit. Targetnya pohon yang **
                        Yang bisa dilakukan: MENGUKUR apakah
                        antarmukanya cocok.
 
-                       Derajat @ r = 1,5 × jarak tanam
-                         Lapisan 1  5,62  ┐  selisih 2%
-                         Lapisan 2  5,74  ┘  keduanya kisi segitiga
+                       Derajat @ r = 1,5 × jarak tanam (pohon dalam)
+                         Lapisan 1  5,54 ± 0,12  ┐  dari prediksi YOLOv12
+                         Lapisan 2  5,74         ┘  selisih 3,5%
                                  │
   ┌──────────────────────────────┼───────────────────────────────────┐
   │                              ▼      LAPISAN 2 — Peramalan        │
@@ -118,14 +118,17 @@ STRUKTUR    = true    − random     nilai peta kontak yang BENAR
 
 | Tahap | Metrik | Hasil | Catatan |
 |---|---|---|---|
-| Deteksi tajuk | mAP50 | **0,758** | YOLO11n, **1 lipatan saja**, 15 epoch |
-| | mAP50-95 | 0,524 | Presisi 0,862 · Recall 0,683 |
+| Deteksi tajuk | **F1 pusat** | **0,960 ± 0,024** | **metrik utama** — pusat tajuk pada pohon unik; YOLOv12n, **3 lipatan × 30 epoch**, satu lingkungan |
+| | Presisi · Recall | 0,950 ± 0,019 · 0,971 ± 0,030 | ambang conf dipilih **silang-lipatan**; ketiganya sepakat di 0,75 |
+| | RMSE pusat | 0,071 ± 0,011 × jarak tanam | F1 **datar** terhadap radius pencocokan ⇒ pusatnya memang tepat |
+| | mAP50 | 0,687 ± 0,071 | metrik **sekunder, berlangit-langit** — kotak GT adalah cap ukuran tetap |
+| | mAP50-95 | 0,425 ± 0,078 | idem; mekanismenya di `layer1_build/LABEL_QUALITY_AUDIT.md` |
 | Kesehatan tajuk | **PR-AUC** | **0,182 ± 0,059** | acak = 0,013 → **14× di atas acak** |
 | | ROC-AUC | 0,861 | |
 | | per lipatan | 0,264 / 0,155 / 0,126 | |
 | `is_unbalance=True` | PR-AUC | 0,181 ± 0,091 | Δ0,001 ≪ 1 std → **DITOLAK** |
 
-**Bacaannya:** deteksi tajuk sawit dari UAV berhasil; penilaian kesehatan jauh di atas acak. Tapi seluruhnya bersandar pada **66 pohon sakit unik**.
+**Bacaannya:** deteksi **pusat** tajuk sawit dari UAV berhasil meyakinkan (F1 0,960); penilaian kesehatan jauh di atas acak. Jarak antara F1 pusat 0,960 dan mAP50 0,687 bukan cacat model — kotak kebenaran-dasarnya cap berukuran tetap, sehingga mAP punya langit-langit yang tidak bergantung model. Yang dikonsumsi Lapisan 2 adalah koordinat, bukan kotak. Tapi sisi kesehatan seluruhnya tetap bersandar pada **66 pohon sakit unik**.
 
 ## 2.2 Lapisan 2 — Eg9PP, lapangan nyata 25 tahun
 
@@ -234,13 +237,13 @@ Empat upaya menaikkan mutu model — umur inokulum, difusi 2-hop, radius lebih b
 |---|---|---|
 | Positif Lapisan 1 | **66 pohon unik** (17/31/18 per lipatan) | hasil kesehatan **underpowered**; std dari 3 angka |
 | Label Lapisan 1 | kesehatan tajuk generik | **BUKAN BSR**, tanpa verifikasi lapangan |
-| Deteksi YOLO | **1 lipatan, 15 epoch** | mAP50 0,758 bukan mean ± std; 3-fold penuh belum dijalankan |
+| ~~Deteksi YOLO 1 lipatan, 15 epoch~~ | **DITUTUP** | Kini YOLOv12n, **3 lipatan × 30 epoch** dalam satu lingkungan, dengan mean ± std. Yang tersisa dan tetap harus dinyatakan: mAP berlangit-langit label, dan **`52000_20000` menyeret seluruh std** — turun di semua metrik (mAP50 0,605 lawan 0,726/0,731) karena anotasinya tidak konsisten (CV kotak 0,327 lawan 0,126/0,170), **bukan** karena efek situs. Pada metrik pusat jaraknya menyusut 3× (0,933 lawan 0,969/0,977), persis karena pusat adalah bagian label yang dapat dipercaya |
 | Blok spasial Eg9PP | **2 parcel** | ±0,008 itu derau optimisasi, bukan ketidakpastian data. Efek beda **2,6×** antar blok (44A +0,0084 vs 44B +0,0219) |
 | ~~Kontrol `random` terlalu lemah~~ | **DITUTUP** | Dulu mata rantai terlemah: `random` global menghubungkan pohon berjarak median 13,2 sehingga bisa mengukur lokalitas, bukan peta. Kini diuji dengan tangga `random_local` (≤6 dan ≤3 jarak tanam) dan **78–85% efeknya bertahan** di keempat horizon. Rewire jaga-jarak murni tetap mustahil di r=1,5 — semua sisi asli panjangnya 1,0 — jadi kontrol berbatas-radius ini adalah yang terketat yang bisa dibangun |
 | Horizon h≠3 untuk SI(D) | **4 seed** (n=8) | dekomposisi utama kini 20 seed di keempat horizon; hanya kepala SI(D) yang belum |
 | Sensor Eg9PP | 498–621 negatif/horizon | nasib sesungguhnya tak diketahui; bias kecil ke atas pada spesifisitas |
 | Kepala SI(D) | 112 → **3 parameter** | kompartemen laten E **tak teramati**; tak bisa dibandingkan dengan varian SEIR mana pun |
-| Uji jembatan | kotak **ground-truth**, bukan prediksi YOLO | angka 5,62 adalah **batas atas** |
+| ~~Uji jembatan pakai kotak ground-truth~~ | **DITUTUP** | Kini diukur dari **prediksi detektor**, bukan kotak GT: derajat pohon-dalam **5,54 ± 0,12** lawan 5,62 ± 0,05 pada kotak GT (−1,4%). Terhadap 5,74 Eg9PP selisihnya **3,5%** — dan 5,74 berada **di luar** pita ±0,12, jadi kalimatnya "berselisih 3,5%", **bukan** "keduanya sama" |
 
 ## Satu klaim yang kami tarik sendiri
 

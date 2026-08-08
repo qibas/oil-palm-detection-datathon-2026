@@ -89,10 +89,12 @@ cd data_clean
 python build_layer1.py         # -> 5.077 pohon unik, 66 positif
 python build_layer2_real.py    # -> 1.200 node, 45 sensus, 3.354 sisi
 
-# 2. Lapisan 1  (CPU ~20 dtk; YOLO butuh GPU)
+# 2. Lapisan 1  (kesehatan CPU ~20 dtk; deteksi butuh GPU, ~45 mnt/lipatan)
 cd ../layer1_build
-python exp_health.py
-python yolo_prep.py && FOLDS=0,1,2 EPOCHS=50 IMGSZ=640 python yolo_train.py
+python exp_health.py                  # kesehatan tajuk, LightGBM, leave-one-ortho-out
+FOLDS=all python train_folds_gpu.py   # YOLOv12n, 3 lipatan x 30 epoch (y12.build otomatis)
+python centre_eval_folds.py           # METRIK UTAMA Tahap 1 + angka uji jembatan
+# jalur YOLO11 lama (yolo_prep.py / yolo_train.py) masih ada tapi DIGANTIKAN oleh y12.py
 
 # 3. Lapisan 2 — Eg9PP  (CPU; total ~24 mnt)
 cd ../layer2_real

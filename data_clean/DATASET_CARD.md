@@ -120,12 +120,21 @@ dibongkar 2012; citra DJI pasca-2013), tak ada kunci join, dan tak satu pun bers
 bergeoreferensi. Yang diuji hanyalah **kompatibilitas antarmuka**: apakah graf keluaran Lapisan 1
 sebangun dengan graf yang dikonsumsi Lapisan 2.
 
-| Derajat rata-rata pada r = 1,5 × jarak tanam | |
+| Derajat rata-rata pada r = 1,5 × jarak tanam, **pohon bagian dalam** | |
 |---|---|
-| Eg9PP (posisi tanam) | **5,74** (pohon bagian dalam) |
-| Roboflow (centroid tajuk) | **5,62** |
-| selisih | **2%** — keduanya kisi segitiga berderajat 6 |
+| Eg9PP (posisi tanam) | **5,74** |
+| Roboflow, **prediksi YOLOv12n** | **5,54 ± 0,12** (3 ortomosaik) |
+| Roboflow, kotak kebenaran-dasar | 5,62 ± 0,05 |
+| selisih prediksi ↔ Eg9PP | **3,5%** — keduanya kisi segitiga berderajat 6 |
+| selisih prediksi ↔ kotak GT | 1,4% — biaya memakai detektor, bukan label |
 
 Dibandingkan **hanya pada dataran r = 1,25–1,5**. Di luar itu Eg9PP melompat (kisi ideal)
 sementara Roboflow melandai (posisi nyata berderau) — artefak presisi, bukan geometri berbeda.
-Uji ini memakai **kotak ground-truth, bukan prediksi YOLO**, jadi angkanya adalah **batas atas**.
+Uji ini **tidak lagi** memakai kotak ground-truth. Angka 5,54 dihitung dari pusat tajuk yang
+benar-benar dideteksi YOLOv12n pada ortomosaik yang **ditahan** di tiap lipatan, digabungkan ke
+pohon unik, dengan ambang keyakinan dipilih **silang-lipatan** supaya ortomosaik uji tidak ikut
+memilih apa pun tentang dirinya sendiri. Angka 5,62 pada kotak GT tetap dicantumkan sebagai
+pembanding — selisih 1,4% di antara keduanya adalah biaya memakai detektor.
+
+Perlu dinyatakan: 5,74 berada **di luar** pita ±0,12, jadi klaim yang sah adalah "berselisih
+3,5%", bukan "keduanya sama". Reproduksi: `python layer1_build/centre_eval_folds.py`.

@@ -1,0 +1,17 @@
+# Token SawitGuard Design System (claude.ai/design).
+#
+# Tema dikunci TERANG dengan sengaja. Seluruh grafik divalidasi terhadap kartu
+# putih (#FFFFFF); membiarkan Streamlit membalik ke gelap akan menampilkan warna
+# di atas permukaan yang belum pernah diuji. Kalau nanti mode gelap diinginkan,
+# ramp risikonya harus dilangkahkan ulang dan divalidasi terhadap permukaan
+# gelap - bukan dibalik begitu saja.
+[theme]
+base = "light"
+primaryColor = "#C3EC3C"              # --lime-500, aksi utama
+backgroundColor = "#EDF2E9"           # --mint-50, latar aplikasi
+secondaryBackgroundColor = "#FFFFFF"  # --surface-card
+textColor = "#1A1C17"                 # --ink-900
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

@@ -77,15 +77,26 @@ yolo_train.py`, or run those lines through the Bash tool.
 The pipeline is **cut in the middle, on purpose**, and that cut is a finding rather than a bug:
 
 - **Layer 1** (`layer1_build/`, `layer1_data_audit/`) — UAV RGB imagery from Roboflow `ds_B`. Crown
-  detection (YOLO11n), crown-health classification (LightGBM), crown geometry. Labels are *generic crown
-  health, not BSR*, on a single survey date.
+  detection (YOLOv12n via `y12.py`; the older YOLO11n path in `yolo_train.py` is superseded),
+  crown-health classification (LightGBM), crown geometry. Labels are *generic crown health, not BSR*,
+  on a single survey date. Stage 1's **primary metric is crown-centre P/R/F1 on unique trees**, not
+  mAP — the ground-truth boxes are fixed-size stamps, so mAP has a model-independent ceiling
+  (`LABEL_QUALITY_AUDIT.md`). A third, independent source (`anom.py`, Peru `PalmAnom`/`PalmSan`) is
+  a separate evidence line and is never merged with `ds_B` either.
 - **Layer 2** (`layer2_real/`) — the Eg9PP field panel (Tisné et al. 2017): 1,200 palms, 45 censuses over 25
   years, **field-verified Ganoderma**, but **no imagery at all**.
 
 No dataset has both imagery and per-tree spread, and the two sources have different estates, different eras,
 no join key and no georeferencing. They are therefore never merged; what is measured instead is *interface
-compatibility* — mean degree at r = 1.5 × planting distance is 5.62 (Layer 1) vs 5.74 (Layer 2). Do not write
-code that joins them.
+compatibility* — mean degree at r = 1.5 × planting distance, inner trees only, is **5.54 ± 0.12**
+(Layer 1, from *detector predictions*) vs 5.74 (Layer 2); 5.62 ± 0.05 is the same figure computed on
+ground-truth boxes. Do not write code that joins them.
+
+An inference bridge is a *different* thing and is not possible as the code stands: the Layer 2
+checkpoint takes 24 features = 4 SELF (needs a time axis) + 14 GENO (genotype, invisible from
+imagery) + 6 STATE, over a 3-census window. Layer 1 has one flight date and no genotype, so 18 of 24
+columns are unfillable. Making it possible means training a UAV-observable variant (no GENO, `W=1`)
+and measuring the cost under leave-one-parcel-out — an experiment, not plumbing.
 
 ### `data_clean/` is the only entry point
 

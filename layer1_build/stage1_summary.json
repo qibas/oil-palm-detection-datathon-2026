@@ -1,0 +1,63 @@
+{
+  "setting": {
+    "model": "yolo12n.pt",
+    "epochs": 30,
+    "imgsz": 640,
+    "folds": [
+      "fold0"
+    ],
+    "seeds": [
+      42
+    ],
+    "over": {}
+  },
+  "folds_run": [
+    "fold0|42"
+  ],
+  "palmanom_ap50": [
+    0.9492895316365431,
+    NaN
+  ],
+  "palmsan_ap50": [
+    0.9496727907095339,
+    NaN
+  ],
+  "map50": [
+    0.9494811611730385,
+    NaN
+  ],
+  "map50_95": [
+    0.703189132646264,
+    NaN
+  ],
+  "controls": {
+    "crown": {
+      "roc_auc": 0.9523809523809524,
+      "pr_auc": 0.9469341682773359,
+      "n_train": 288,
+      "n_val": 73
+    },
+    "context": {
+      "roc_auc": 0.9198412698412699,
+      "pr_auc": 0.8606995266929923,
+      "n_train": 288,
+      "n_val": 73
+    },
+    "full": {
+      "roc_auc": 0.8801587301587301,
+      "pr_auc": 0.8478410596129884,
+      "n_train": 288,
+      "n_val": 73
+    }
+  },
+  "annotation_density": {
+    "images": 86,
+    "gt": 109,
+    "pred": 148,
+    "gt_per_image": 1.2674418604651163,
+    "pred_per_image": 1.7209302325581395,
+    "images_pred_gt_gt": 28
+  },
+  "source_doi": "10.17632/nh7d23dgnw.1",
+  "licence": "CC BY 4.0"
+}
