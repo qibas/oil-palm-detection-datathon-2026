@@ -14,8 +14,14 @@ memberi angka berbeda.
 import base64
 import io
 import json
+import mimetypes
 import os
 import tempfile
+
+# Windows tidak selalu punya .woff2 di registry, dan StaticFiles membaca dari sana.
+# Tanpa baris ini font di-sajikan sebagai application/octet-stream; browser masih
+# menerimanya, tapi tidak ada alasan mengandalkan kelonggaran itu saat demo.
+mimetypes.add_type("font/woff2", ".woff2")
 
 import numpy as np
 from starlette.applications import Starlette
