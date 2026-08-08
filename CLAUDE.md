@@ -60,6 +60,8 @@ python run_real.py probe [seeds]     # SI(D) initialisation probe only; APPENDS 
 python perm_null.py [n_perm]         # genotype-controlled permutation null   (~45 s)
 python run_v2.py                     # locality ladder + feature ablation -> results_v2.csv
 python sweep_v2.py                   # graph-radius and history-window sweep (prints only)
+python run_v3.py 20                  # single-photo variant, within-census AP -> results_v3.csv (~12 min)
+python run_v3_perm.py 200 2          # within-family null for v3 (~28 min); STRATA=progeny_parcel for the strict one
 ```
 
 Environment knobs (defaults in parentheses): `EPOCHS` (60 for Layer 2, 25 for YOLO), `SEEDS` (5 in the v2
@@ -92,11 +94,41 @@ compatibility* — mean degree at r = 1.5 × planting distance, inner trees only
 (Layer 1, from *detector predictions*) vs 5.74 (Layer 2); 5.62 ± 0.05 is the same figure computed on
 ground-truth boxes. Do not write code that joins them.
 
-An inference bridge is a *different* thing and is not possible as the code stands: the Layer 2
-checkpoint takes 24 features = 4 SELF (needs a time axis) + 14 GENO (genotype, invisible from
-imagery) + 6 STATE, over a 3-census window. Layer 1 has one flight date and no genotype, so 18 of 24
-columns are unfillable. Making it possible means training a UAV-observable variant (no GENO, `W=1`)
-and measuring the cost under leave-one-parcel-out — an experiment, not plumbing.
+An inference bridge is a *different* thing. The frozen Layer 2 checkpoint takes 24 features =
+4 SELF (needs a time axis) + 14 GENO (genotype, invisible from imagery) + 6 STATE, over a 3-census
+window, so 18 of 24 columns are unfillable from one flight — that checkpoint cannot consume Layer 1
+output, and zero-filling the gap is forbidden.
+
+**The `v3` variant closes this, and it is the most consequential result in the package.**
+`layer2_real/dataset_v3.py` + `run_v3.py` drop SELF and GENO and set `W=1`, leaving only STATE as
+diffusion payload — i.e. *neighbour condition through the graph*, which is exactly what one photo
+yields. Two things came out of it:
+
+- **Within-census AP is the only fair metric.** Pooled AP rewards guessing *which census this is* —
+  useless for ranking palms inside one snapshot. The full model loses 47% of its value under the
+  fair metric (0.1818 → 0.0973); v3 loses almost nothing (0.1259 → 0.1015). On the real task the
+  photo model **matches** the full model (+0.0042 ± 0.0035, 36/40 — "not weaker", not "better").
+- **77% of v3's skill comes specifically from the CORRECT contact map** (+0.0296 ± 0.0057, 40/40).
+  Without the graph it is exactly at chance, because STATE is provably 0 on the risk set.
+
+v3 deliberately breaks two locked rules (`WINDOW=3`, and prohibition #7 requiring genotype). That is
+declared in `layer2_real/INTERFACE.md`, not done silently, and the cost is **measured** rather than
+assumed: a within-family permutation null (`run_v3_perm.py`, 200 permutations per stratum) puts the
+family contamination at **36%**, with the remaining **64% spatial** and 0/200 permutations reaching
+the observed value under the strictest stratum. Prohibition #7 stays fully binding for `run_real.py`
+and `run_v2.py` — only v3 has the null that quantifies its own contamination.
+
+The end-to-end cost of that handoff is now **measured** (`run_v3_noisy.py`): trained on clean status,
+tested on detector-rate noise (recall 0.446, fpr 0.0094, measured on ds_B by
+`layer1_build/unhealthy_threshold.py`), within-census AP falls 0.0916 → 0.0800 — lift 1.45× → **1.27×**,
+**59% of the signal survives**. Real cost, not a fatal one. What remains unmeasured is narrower: those
+rates come from ds_B, a different estate than Eg9PP.
+
+One hypothesis was tested and **rejected**: a separate confidence threshold for the Unhealthy class,
+chosen cross-fold, is *worse* than reusing the localisation threshold 0.75 (F1 0.370 vs 0.406) — with
+17–31 positives per orthomosaic the optimum is noise and does not transfer. Keep 0.75. Related
+correction: "the detector only finds 0–1 symptomatic palms per tile" is the base rate, not a failure —
+a 1024² tile holds ~65 palms at a 1.3% Unhealthy rate.
 
 ### `data_clean/` is the only entry point
 

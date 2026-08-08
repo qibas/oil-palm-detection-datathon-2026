@@ -1,6 +1,0 @@
-path: C:\Users\Rifqi\Documents\Datathon\oil-palm-detection-datathon-2026\layer1_build\anom_data
-train: fold3_train.txt
-val: fold3_val.txt
-names:
-  0: PalmSan
-  1: PalmAnom

@@ -208,6 +208,208 @@ dinilai pada **himpunan contoh identik**, kenaikannya hilang: +0,0023 INCONCLUSI
 jangkauan, menambah riwayat, atau menambah penanda umur inokulum tidak menambahkan apa pun —
 dan beberapa di antaranya justru mengencerkannya.
 
+## 2.5 Varian foto-tunggal (v3) — riwayat waktu ternyata tidak dibutuhkan
+
+Pertanyaannya praktis: model utama meminta 24 kolom, tetapi satu foto drone hanya bisa
+memberi posisi, kondisi tajuk, dan graf tetangga. Bisakah Lapisan 2 dilatih ulang **hanya**
+dengan itu? Kode: `layer2_real/dataset_v3.py` · `run_v3.py` · `run_v3_perm.py`.
+
+**Metriknya harus berubah dulu, dan itu temuan tersendiri.** AP gabungan memberi nilai pada
+kemampuan menebak *sensus mana ini* — berguna untuk angka gabungan, nol guna untuk
+memeringkat pohon di dalam satu bidikan. Karena itu v3 dinilai dengan **AP dalam-sensus**:
+AP dihitung per sensus lalu dirata-rata. 20 seed × 2 lipatan = 40 pasangan, h=3.
+
+| | AP gabungan | **AP dalam-sensus** |
+|---|---|---|
+| penuh (24 kolom, W=3) | 0,1818 ± 0,0077 | 0,0973 ± 0,0107 |
+| foto — tanpa graf | 0,0468 ± 0,0003 | 0,0632 ± 0,0031 |
+| foto — graf acak | 0,0974 ± 0,0072 | 0,0719 ± 0,0064 |
+| **foto — graf benar** | 0,1259 ± 0,0009 | **0,1015 ± 0,0079** |
+
+**Model penuh kehilangan 47% nilainya** begitu dinilai dalam-sensus (0,1818 → 0,0973).
+Separuh angka gabungan itu adalah model menebak tanggal, bukan menilai pohon. Model foto
+nyaris tidak kehilangan apa pun (0,1259 → 0,1015), karena ia tidak punya waktu untuk
+disandari.
+
+| putusan berpasangan (dalam-sensus) | selisih | tanda | vonis |
+|---|---|---|---|
+| graf apa pun (random − nograph) | +0,0087 ± 0,0047 | 39/40 | POS |
+| **PETA BENAR (true − random)** | **+0,0296 ± 0,0057** | **40/40** | **POS** |
+| harga kepraktisan (foto − penuh) | +0,0042 ± 0,0035 | 36/40 | POS |
+
+`nograph` mendarat di 0,0468 melawan laju dasar 0,0468 — **persis**. Blok STATE terbukti
+konstan 0 di risk set, jadi tanpa graf v3 benar-benar buta; seluruh kemampuannya datang
+dari graf, dan **77% di antaranya khusus dari peta kontak yang BENAR**.
+
+**Harga kepraktisannya nol.** Pada tugas yang sebenarnya, model foto menyamai model penuh.
+Marginnya +0,0042 dengan std 0,0035 — lolos ambang, tetapi hanya 1,2 std, jadi klaim yang
+sah adalah "tidak lebih lemah", **bukan** "lebih unggul".
+
+### Uji permutasi dalam-famili untuk v3 (200 permutasi per strata)
+
+v3 membuang genotipe, yang **melanggar larangan #5**. Kontaminasi famili karena itu wajib
+diukur, bukan diasumsikan. Lintasan per-pohon ditukar hanya antar pohon sefamili; kisi tidak
+pernah bergerak, sehingga komposisi famili tiap ketetanggaan dipertahankan dan hanya susunan
+spasial halus yang dihancurkan.
+
+| strata | teramati | null | kelebihan | z | perm ≥ teramati |
+|---|---|---|---|---|---|
+| `progeny` | 0,1016 | 0,0748 ± 0,0043 | +0,0268 | +6,25 | **0/200** |
+| `progeny+parcel` (terketat) | 0,1016 | 0,0772 ± 0,0040 | +0,0244 | +6,04 | **0/200** |
+
+Terhadap garis tanpa-graf 0,0632, pada strata terketat:
+
+```
+kekerabatan + petak   +0,0140    36%
+susunan spasial       +0,0244    64%
+```
+
+**Bacaannya:** kontaminasi famili itu **nyata dan sebesar 36%** — bukan nol, bukan
+segalanya. Yang tersisa setelah famili dan petak dipegang tetap adalah efek spasial, dan
+tak satu pun dari 200 permutasi menyentuhnya. Perhatikan arah bacanya: di uji ini
+**kemampuan yang bertahan di bawah null adalah kabar buruk**, kebalikan dari kebanyakan uji
+permutasi.
+
+Rasio graf-benar terhadap tanpa-skill dalam-sensus adalah **1,61×**, sementara RR tetangga
+Mantel-Haenszel di §2.2 adalah **1,65×**. Dua metode yang sama sekali berbeda — GNN dan
+epidemiologi klasik — mendarat di besaran yang sama.
+
+Pencabutan larangan #5 **hanya berlaku untuk v3**, karena hanya v3 yang punya null yang
+menguantifikasi kontaminasinya. Rinciannya di `layer2_real/INTERFACE.md`.
+
+### Ongkos ujung-ke-ujung: apa yang hilang saat masukan datang dari detektor
+
+Sampai di sini v3 masih dinilai dengan status Eg9PP yang **terverifikasi lapangan**. Di jalur
+foto, kolom itu diisi kelas `Unhealthy` detektor. Ongkos substitusinya diukur di
+`layer2_real/run_v3_noisy.py`: dilatih pada status bersih, **diuji pada status berderau** —
+meniru penyerahan sesungguhnya, di mana tidak ada label lapangan di kebun tujuan untuk
+melatih ulang.
+
+Laju detektor diukur dari ds_B pada conf 0,75: **recall 0,446 · fpr 0,0094**
+(`layer1_build/unhealthy_threshold.py`).
+
+| masukan | AP dalam-sensus | lift atas tanpa-skill |
+|---|---|---|
+| status lapangan (bersih) | 0,0916 ± 0,0081 | 1,45× |
+| **keluaran detektor (berderau)** | **0,0800 ± 0,0070** | **1,27×** |
+| garis tanpa-skill | 0,0632 | 1× |
+
+**59% sinyal bertahan.** Substitusi detektor memakan 41% — nyata, tetapi tidak menghapus
+efeknya. Perhatikan model di sini memakai **satu kolom** (`is_sympt`), satu-satunya yang dapat
+diisi satu foto; itu sebabnya garis bersihnya 0,0916, bukan 0,1015 versi enam kolom.
+
+### Berapa nilainya kalau detektor bisa membedakan MATI dari BERGEJALA
+
+Jalur foto memakai satu kolom biner, dan pada ubin khas itu hanya menghasilkan **dua
+tingkat** skor. Menambah kelas ke detektor adalah pekerjaan berminggu-minggu, jadi
+pertanyaan yang benar bukan "bisakah" melainkan **"berapa nilainya"** — dan itu
+terjawab tanpa menyentuh detektor, karena Eg9PP menyimpan S / D / C terpisah.
+Kode: `layer2_real/run_v3_cols.py`. Semua W=1, graf benar, 10 seed × 2 lipatan.
+
+| kolom | AP dalam-sensus | lift | tingkat yang mungkin |
+|---|---|---|---|
+| 1 — `is_sympt` (yang detektor beri **sekarang**) | 0,0916 ± 0,0081 | 1,45× | 7 |
+| 2 — **+ `is_dead`** (kalau ada kelas mati) | **0,0962 ± 0,0081** | **1,52×** | **23** |
+| 3 — + `is_cens` (mustahil dari foto) | 0,0999 ± 0,0077 | 1,58× | 46 |
+| 6 — + selisih antar sensus (butuh 2 kunjungan) | 0,1015 ± 0,0081 | 1,61× | 161 |
+
+| selisih berpasangan | | tanda | vonis |
+|---|---|---|---|
+| **nilai kelas MATI** (2 − 1 kolom) | **+0,0046 ± 0,0004** | **20/20** | **POS** |
+| + penyensoran (3 − 2 kolom) | +0,0037 ± 0,0008 | 20/20 | POS |
+| + selisih antar waktu (6 − 3 kolom) | +0,0016 ± 0,0007 | 20/20 | POS |
+
+**Bacaannya:** menambah kelas "mati" pada detektor adalah **perolehan tunggal
+terbesar yang masih tersedia** — +0,0046 dengan std 0,0004, yaitu 11,5 std, dan
+20/20 tanda searah. Ia merebut **47%** dari seluruh jarak antara 1 kolom dan 6 kolom,
+dan melipattigakan granularitas (7 → 23 tingkat). Dua sisanya di luar jangkauan foto
+tunggal: penyensoran tidak pernah terlihat dari udara, dan selisih antar waktu butuh
+kunjungan kedua.
+
+**Yang TIDAK dijanjikan angka ini:** lebih banyak pita di ubin yang sehat. "Tingkat
+yang mungkin" dihitung pada Eg9PP yang laju gejalanya **40,6%**; ubin drone khas
+1,1%. Ubin dengan satu pohon sakit tetap memberi dua pita berapa pun kolomnya —
+karena dua pita memang kebenarannya di sana. Yang naik adalah **mutu peringkat**,
+bukan resolusi tampilan.
+
+### Kalibrasi: seberapa jauh skor dari peluang sungguhan
+
+Larangan "jangan sajikan `sigmoid(logit)` sebagai persentase" selama ini berupa
+aturan. Sekarang ia punya angka. Diukur leave-one-parcel-out pada 40.828 contoh uji,
+varian v3 6-kolom:
+
+| `sigmoid(skor)` | kalau dibaca % | sesungguhnya sakit | meleset |
+|---|---|---|---|
+| 0,50 – 0,60 (n=509) | 55% | **23,6%** | −31 poin |
+| 0,40 – 0,50 (n=3.467) | 45% | **13,6%** | −31 poin |
+| 0,30 – 0,40 (n=12.069) | 35% | **6,9%** | −28 poin |
+| 0,20 – 0,30 (n=24.746) | 25% | **2,0%** | −23 poin |
+
+Laju dasar sesungguhnya 4,7%; rentang sigmoid model 0,273–0,654.
+
+**Sebabnya bukan cacat:** model dilatih dengan focal loss (γ 2,0, α 0,75) yang
+sengaja membobot kelas langka supaya ia belajar **membedakan**, bukan supaya
+angkanya benar. Model semacam ini **memeringkat baik dan menaksir buruk** — dua
+tugas berbeda, dan yang kedua tidak pernah dilatih.
+
+Konsekuensinya operasional dan tajam: memutuskan "tebang yang di atas 50%" akan
+menebang pohon yang **tiga dari empat** di antaranya sebenarnya sehat. Itulah yang
+dijaga larangan tersebut, dan sekarang besarnya tercatat.
+
+### Agregasi blok: hipotesis kedua yang kami uji dan TOLAK
+
+Dugaannya operasional: mandor tidak memeriksa satu pohon, ia mengirim regu ke satu
+petak. Kalau unit prediksinya petak, merata-ratakan puluhan pohon semestinya
+memangkas derau dan menghasilkan angka yang lebih kuat sekaligus lebih relevan.
+Diuji di `layer2_real/run_v3_blocks.py`, leave-one-parcel-out, **1.558 unit
+blok-sensus** per lari (39,4 petak × 39,5 sensus).
+
+| metrik, unit = petak | model | acak | selisih |
+|---|---|---|---|
+| Spearman peringkat petak | **+0,179 ± 0,003** | +0,004 ± 0,020 | +0,175, **20/20**, POS |
+| tangkapan 5 petak teratas | **18,5%** | 14,9% | +3,6 pp, 19/20 |
+
+Garis acak dihitung dengan mengacak skor pohon **di dalam sensus** lalu
+mengagregasi dengan cara yang sama persis. Ia duduk di **nol** (+0,004), jadi
+metriknya **tidak** terlalu mudah — model memang mengalahkannya 20 dari 20.
+
+**Tetapi liftnya 1,24×, di bawah lift per-pohon 1,61×.** Hipotesisnya ditolak.
+
+**Bacaannya, dan ini memperkuat klaim inti paket:** sinyalnya berskala **pohon**,
+bukan petak. Yang berisiko adalah sawit yang bersentuhan dengan sawit sakit, bukan
+seluruh petaknya; merata-ratakan 8–17 pohon mencampur 1–2 yang benar-benar terancam
+dengan belasan yang tidak. Agregasi **mengencerkan** sinyal, bukan meredam derau.
+Graf kontak bekerja justru **karena ia lokal** — begitu unitnya melewati jangkauan
+kontak akar, keunggulannya luruh. Keluaran operasional yang benar tetap **daftar
+prioritas per-pohon**.
+
+### Pusat wabah — keluaran tanpa model
+
+Komponen terhubung di antara tajuk bergejala pada graf kontak. Tidak meramal apa
+pun, tidak memeringkat apa pun, dan tidak membawa batas baru: ia pernyataan
+geometris murni ("gejala-gejala ini bersambung, yang itu terpisah"). Dilaporkan per
+pusat: jumlah tajuk bergejala, jumlah sawit sehat yang bersentuhan langsung, dan
+titik tengahnya. Implementasi: `demo_core.outbreak_foci()`; tampil di layar Hasil.
+
+### Ambang kelas Unhealthy: hipotesis yang kami uji dan TOLAK
+
+Dugaan awalnya: detektor jarang memanggil `Unhealthy` karena ambang 0,75 dipilih untuk
+memaksimalkan F1 **pusat tajuk**, yang didominasi kelas Healthy — jadi ambang terpisah untuk
+kelas penyakit akan menolong. Diuji, dan **tidak**:
+
+| | F1 kelas Unhealthy |
+|---|---|
+| ambang dipilih silang-lipatan | 0,370 ± 0,052 |
+| ambang 0,75 apa adanya | **0,406 ± 0,058** |
+
+Menyetel ambang justru memperburuk. Optimum tiap lipatan melompat — 0,85 · 0,55 · 0,85 —
+karena dengan 17–31 positif per ortomosaik letaknya adalah derau, sehingga tidak berpindah
+antar lipatan. **Ambang tetap 0,75.**
+
+Ikut terkoreksi satu tafsir kami sendiri: "detektor hanya menemukan 0–1 gejala per ubin"
+bukan kegagalan. Ubin 1024² memuat ~65 sawit; pada laju Unhealthy 1,3% ia **diharapkan**
+memuat ~0,85 pohon sakit. Yang terlihat adalah laju dasar, bukan detektor yang lumpuh.
+
 ---
 
 # BAGIAN 3 — APA ARTINYA
@@ -243,6 +445,9 @@ Empat upaya menaikkan mutu model — umur inokulum, difusi 2-hop, radius lebih b
 | Horizon h≠3 untuk SI(D) | **4 seed** (n=8) | dekomposisi utama kini 20 seed di keempat horizon; hanya kepala SI(D) yang belum |
 | Sensor Eg9PP | 498–621 negatif/horizon | nasib sesungguhnya tak diketahui; bias kecil ke atas pada spesifisitas |
 | Kepala SI(D) | 112 → **3 parameter** | kompartemen laten E **tak teramati**; tak bisa dibandingkan dengan varian SEIR mana pun |
+| Varian v3 tanpa genotipe | **36% kekerabatan** | efek graf v3 mengandung 36% kontaminasi famili (null dalam-famili+petak, 200 permutasi). Angka mentahnya **tidak boleh** dikutip seolah seluruhnya penularan; 64% yang tersisa adalah spasial |
+| ~~Masukan v3 dari citra belum diuji~~ | **DIUKUR: −41%** | Disimulasikan pada laju detektor ds_B (recall 0,446 · fpr 0,0094): AP dalam-sensus 0,0916 → **0,0800**, lift 1,45× → **1,27×**, **59% sinyal bertahan**. Yang tersisa sebagai batas: laju itu diukur di ds_B, kebun yang **berbeda** dari Eg9PP, jadi ini simulasi ongkos — bukan pengukuran lapangan di kebun tujuan |
+| Positif Unhealthy terlalu sedikit untuk menyetel ambang | **66 pohon unik** | Ambang kelas Unhealthy dipilih silang-lipatan justru **lebih buruk** (F1 0,370) daripada memakai 0,75 apa adanya (0,406); optimum per lipatan melompat 0,85/0,55/0,85 karena letaknya derau. Ambang tetap 0,75 |
 | ~~Uji jembatan pakai kotak ground-truth~~ | **DITUTUP** | Kini diukur dari **prediksi detektor**, bukan kotak GT: derajat pohon-dalam **5,54 ± 0,12** lawan 5,62 ± 0,05 pada kotak GT (−1,4%). Terhadap 5,74 Eg9PP selisihnya **3,5%** — dan 5,74 berada **di luar** pita ±0,12, jadi kalimatnya "berselisih 3,5%", **bukan** "keduanya sama" |
 
 ## Satu klaim yang kami tarik sendiri
@@ -257,6 +462,9 @@ Laporan sebelumnya menyebut satu ortomosaik "kolaps" ke PR-AUC 0,030 sebagai buk
 |---|---|
 | ringkasan semua angka | `00_RINGKASAN.csv` |
 | tangga lokalitas + ablasi fitur | `layer2_real/results_v2.csv` · kode: `run_v2.py`, `dataset_v2.py`, `sweep_v2.py` |
+| varian foto-tunggal (v3) | `layer2_real/results_v3.csv` · kode: `dataset_v3.py`, `run_v3.py` |
+| null dalam-famili untuk v3 | `layer2_real/results_v3_perm_progeny.csv` · `results_v3_perm_progeny_parcel.csv` · kode: `run_v3_perm.py` |
+| penyimpangan kontrak v3 | `layer2_real/INTERFACE.md` bagian akhir |
 | angka mentah Eg9PP | `layer2_real/results_real.csv` · log: `run_real.log` |
 | angka mentah Lapisan 1 | `layer1_build/RESULTS_LAYER1.md` |
 | fakta data yang boleh diklaim | `data_clean/DATASET_CARD.md` |

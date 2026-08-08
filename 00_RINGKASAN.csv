@@ -55,3 +55,34 @@ L2 Eg9PP,null permutasi h=4,RR_MH,1.6287,,500.0,0/500,,null 1.11+/-0.09; kelebih
 jembatan,uji lebar sepur,derajat @1.5x L1 (prediksi detektor),5.54,0.12,3.0,,,"YOLOv12n 3 ortho, pohon dalam; conf dipilih silang-lipatan"
 jembatan,uji lebar sepur,derajat @1.5x L1 (kotak GT),5.62,0.05,3.0,,,"pembanding; biaya memakai detektor = 1,4%"
 jembatan,uji lebar sepur,derajat @1.5x L2,5.74,,,,,"selisih 3,5% thd prediksi; 5,74 DI LUAR pita +/-0,12"
+L2 Eg9PP,v3 foto-tunggal h=3,AP dalam-sensus penuh (24 kol W=3),0.0973,0.0107,40.0,,,"metrik adil untuk peringkat dalam satu bidikan"
+L2 Eg9PP,v3 foto-tunggal h=3,AP dalam-sensus foto tanpa graf,0.0632,0.0031,40.0,,,garis tanpa-skill; STATE konstan 0 di risk set
+L2 Eg9PP,v3 foto-tunggal h=3,AP dalam-sensus foto graf acak,0.0719,0.0064,40.0,,,
+L2 Eg9PP,v3 foto-tunggal h=3,AP dalam-sensus foto graf BENAR,0.1015,0.0079,40.0,,,"1,61x tanpa-skill; bandingkan RR Mantel-Haenszel 1,65x"
+L2 Eg9PP,v3 foto-tunggal h=3,"AP(foto graf benar) - AP(graf acak), dalam-sensus",0.0296,0.0057,40.0,40/40,POS,77% sinyal v3 dari PETA BENAR
+L2 Eg9PP,v3 foto-tunggal h=3,"AP(foto) - AP(penuh), dalam-sensus",0.0042,0.0035,40.0,36/40,POS,"harga kepraktisan NOL; margin 1,2 std -> klaim = tidak lebih lemah"
+L2 Eg9PP,v3 foto-tunggal h=3,"AP(foto) - AP(penuh), gabungan",-0.0558,0.0076,40.0,0/40,NEG,metrik gabungan menghargai tebak-tanggal; bukan tugas v3
+L2 Eg9PP,v3 null dalam-famili h=3,kelebihan vs null progeny,0.0268,0.0043,200.0,0/200,POS,z=+6.25; 200 permutasi
+L2 Eg9PP,v3 null dalam-famili h=3,kelebihan vs null progeny+parcel,0.0244,0.0040,200.0,0/200,POS,"z=+6.04; strata terketat; 64% spasial / 36% kekerabatan"
+L2 Eg9PP,v3 ujung-ke-ujung h=3,AP dalam-sensus masukan BERSIH (1 kolom),0.0916,0.0081,20.0,,,"lift 1,45x atas tanpa-skill 0.0632"
+L2 Eg9PP,v3 ujung-ke-ujung h=3,AP dalam-sensus masukan DETEKTOR,0.0800,0.0070,400.0,,,"lift 1,27x; 59% sinyal bertahan; recall 0.446 fpr 0.0094"
+L1 UAV,ambang kelas Unhealthy,F1 ambang dipilih silang-lipatan,0.370,0.052,3.0,,,DITOLAK - lebih buruk dari 0.75 apa adanya
+L1 UAV,ambang kelas Unhealthy,F1 ambang 0.75 apa adanya,0.406,0.058,3.0,,,dipertahankan; optimum per lipatan melompat 0.85/0.55/0.85 = derau
+L1 UAV,ambang kelas Unhealthy,recall detektor @0.75,0.446,,3.0,,,dipakai run_v3_noisy.py
+L1 UAV,ambang kelas Unhealthy,fpr detektor @0.75,0.0094,,3.0,,,idem
+L2 Eg9PP,v3 ablasi kolom h=3,AP 1 kolom is_sympt,0.0916,0.0081,20.0,,,"lift 1,45x; 7 tingkat mungkin; yang detektor beri sekarang"
+L2 Eg9PP,v3 ablasi kolom h=3,AP 2 kolom + is_dead,0.0962,0.0081,20.0,,,"lift 1,52x; 23 tingkat; TARGET kalau detektor punya kelas mati"
+L2 Eg9PP,v3 ablasi kolom h=3,AP 3 kolom + is_cens,0.0999,0.0077,20.0,,,"lift 1,58x; 46 tingkat; is_cens mustahil dari foto"
+L2 Eg9PP,v3 ablasi kolom h=3,AP 6 kolom + selisih,0.1015,0.0081,20.0,,,"lift 1,61x; 161 tingkat; butuh dua kunjungan"
+L2 Eg9PP,v3 ablasi kolom h=3,NILAI KELAS MATI (2-1 kolom),0.0046,0.0004,20.0,20/20,POS,"11,5 std; merebut 47% jarak 1->6 kolom"
+L2 Eg9PP,v3 ablasi kolom h=3,+ penyensoran (3-2 kolom),0.0037,0.0008,20.0,20/20,POS,mustahil dari foto tunggal
+L2 Eg9PP,v3 ablasi kolom h=3,+ selisih antar waktu (6-3 kolom),0.0016,0.0007,20.0,20/20,POS,butuh kunjungan kedua
+L2 Eg9PP,agregasi blok h=3,Spearman blok model,0.179,0.003,20.0,20/20,POS,"1.558 unit blok-sensus; acak +0,004 -> metrik TIDAK terlalu mudah"
+L2 Eg9PP,agregasi blok h=3,Spearman blok acak (garis nol),0.004,0.020,20.0,,,garis acak pada metrik yang sama
+L2 Eg9PP,agregasi blok h=3,tangkapan top5 blok model,0.185,,20.0,19/20,POS,"lift 1,24x atas acak 14,9%"
+L2 Eg9PP,agregasi blok h=3,tangkapan top5 blok acak,0.149,,20.0,,,
+L2 Eg9PP,agregasi blok h=3,VONIS agregasi blok,-1.0,,20.0,,,"DITOLAK: lift blok 1,24x < lift pohon 1,61x; sinyal berskala pohon, agregasi mengencerkannya"
+L2 Eg9PP,kalibrasi v3 h=3,laju sakit pada sigmoid 0.50-0.60,0.236,,509.0,,,"dibaca 55% -> meleset -31 poin"
+L2 Eg9PP,kalibrasi v3 h=3,laju sakit pada sigmoid 0.40-0.50,0.136,,3467.0,,,"dibaca 45% -> meleset -31 poin"
+L2 Eg9PP,kalibrasi v3 h=3,laju sakit pada sigmoid 0.30-0.40,0.069,,12069.0,,,"dibaca 35% -> meleset -28 poin"
+L2 Eg9PP,kalibrasi v3 h=3,laju dasar sesungguhnya,0.047,,40828.0,,,"model TIDAK terkalibrasi; focal loss alfa 0,75"

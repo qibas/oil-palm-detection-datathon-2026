@@ -15,7 +15,7 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.abspath(__file__))
 L1 = os.path.join(ROOT, "layer1_build")
 L2 = os.path.join(ROOT, "layer2_real")
-for p in (L1,):
+for p in (L1, L2):          # L2 dibutuhkan untuk models_real (checkpoint v3-foto)
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -37,6 +37,26 @@ FACTS = {
     "n_years": 25,
     "n_palms": 1200,
 }
+
+# --- Angka Lapisan 2 yang boleh ditampilkan. Semua dari results_v3*.csv dan
+#     00_RINGKASAN.csv; jangan ditulis ulang di tempat lain.
+V3_FACTS = {
+    "ap_full_pooled": (0.1818, 0.0077),
+    "ap_full_within": (0.0973, 0.0107),
+    "ap_photo_within": (0.1015, 0.0079),
+    "ap_nograph_within": (0.0632, 0.0031),
+    "ap_1col_within": (0.0916, 0.0081),
+    "ap_1col_noisy": (0.0800, 0.0070),
+    "struktur": (0.0296, 0.0057, "40/40"),
+    "perm_progeny": (0.0268, 6.25, "0/200"),
+    "perm_strict": (0.0244, 6.04, "0/200"),
+    "kinship_pct": 36,
+    "signal_kept_pct": 59,
+    "lift_top5": 1.81,
+    "per_case_model": 8.8,
+    "per_case_random": 15.8,
+}
+
 
 # --- Palet: token SawitGuard Design System (claude.ai/design), diverifikasi ulang.
 #
@@ -102,6 +122,7 @@ def readiness(info):
     """
     n = info.get("n", 0) if info else 0
     ok_graph = bool(info and info.get("ok_n") and info.get("ok_scale"))
+    n_sick = int(info.get("n_sympt", 0)) if info else 0
     return [
         {"bahan": "Daftar pohon + posisinya", "ada": n > 0,
          "punyamu": "%d pohon terdeteksi" % n if n else "belum ada citra diproses",
@@ -111,12 +132,13 @@ def readiness(info):
                      % (info["deg_inner"], info["n_inner"])) if ok_graph
                     else "skala citra di luar jangkauan, graf tidak dibangun",
          "cara": "otomatis dari foto drone"},
-        {"bahan": "Riwayat minimal 3 kunjungan", "ada": False,
-         "punyamu": "1 dari 3 kunjungan" if n else "0 dari 3 kunjungan",
-         "cara": "terbang ulang, atau sensus lapangan tiap 6 bulan"},
-        {"bahan": "Catatan genotipe (progeni)", "ada": False,
-         "punyamu": "belum ada",
-         "cara": "arsip tanam kebun — tidak bisa dilihat dari udara"},
+        {"bahan": "Tajuk bergejala sebagai sumber", "ada": n_sick > 0,
+         "punyamu": ("%d tajuk terdeteksi tidak sehat" % n_sick if n_sick
+                     else "tidak ada — tanpa sumber, seluruh skor identik"),
+         "cara": "otomatis dari foto drone (kelas Unhealthy detektor)"},
+        {"bahan": "Riwayat kunjungan + genotipe", "ada": False,
+         "punyamu": "belum ada — TIDAK dibutuhkan untuk peringkat dalam satu bidikan",
+         "cara": "hanya perlu kalau ingin lintasan 25 tahun seperti Eg9PP"},
     ]
 
 
@@ -189,11 +211,39 @@ def detect_image(path, fold="fold0", conf=0.75, imgsz=640):
     if ok_n:
         deg, d_all, d_in, n_in = dc.degrees(xy, dc.R_GRAPH * spacing)
 
+    # --- skor gejala KONTINU, dari lintasan kedua pada conf rendah -------------
+    #
+    # Lokalisasi TETAP memakai conf 0,75 (yang tervalidasi, F1 pusat 0,960).
+    # Lintasan kedua pada conf 0,10 hanya dipakai untuk memberi tiap pohon sebuah
+    # skor Unhealthy lunak: keyakinan TERTINGGI di antara deteksi Unhealthy yang
+    # jatuh pada pohon itu. Prosedur yang sama dengan
+    # `layer1_build/unhealthy_threshold.py::per_tree_scores`.
+    #
+    # BELUM TERVALIDASI. Model dilatih pada `is_sympt` Eg9PP yang BINER (status S/D
+    # terverifikasi lapangan). Memberinya 0,37 adalah masukan di luar distribusi
+    # latih. Peringkatnya masuk akal karena modelnya monoton, tetapi tidak ada
+    # ground truth kontinu di Eg9PP untuk menguji apakah gradasi itu LEBIH BENAR.
+    # UI wajib menandainya; `score_photo(mode=...)` menyimpan keduanya.
+    from scipy.spatial import cKDTree as _KD
+    soft = np.zeros(len(det), float)
+    try:
+        det_lo, _ = dc.detect(model, [path], 0.10, imgsz, 1, dev, stitch=False)
+        if det_lo:
+            lo_xy = np.array([[d[0], d[1]] for d in det_lo], float)
+            lo_unh = np.array([d[2] if d[3] == 1 else 0.0 for d in det_lo], float)
+            _, idx = _KD(xy).query(lo_xy, k=1)
+            for i, v in zip(idx, lo_unh):
+                if v > soft[i]:
+                    soft[i] = v
+    except Exception:                      # lintasan lunak opsional; jangan jatuhkan demo
+        pass
+
     df = pd.DataFrame({
         "cx": xy[:, 0], "cy": xy[:, 1],
         "conf": [d[2] for d in det],
         "cls": [dc.NAMES_OF(d[3]) if hasattr(dc, "NAMES_OF") else
                 __import__("y12").NAMES[d[3]] for d in det],
+        "unh": soft,
         "deg": deg,
     })
     info = {
@@ -201,6 +251,7 @@ def detect_image(path, fold="fold0", conf=0.75, imgsz=640):
         "ok_scale": ok_scale, "ok_n": ok_n, "deg_all": d_all, "deg_inner": d_in,
         "n_inner": n_in, "r_graph_px": dc.R_GRAPH * spacing if ok_n else float("nan"),
         "weights": os.path.relpath(w, ROOT), "fold": fold, "conf": conf,
+        "n_sympt": int((df.cls == "Unhealthy").sum()),
     }
     return df, info
 
@@ -216,13 +267,249 @@ def edges_within(xy, r):
 
 
 def sample_images(n=6):
-    """Beberapa ubin ds_B sebagai contoh siap-klik, supaya demo tidak butuh unggahan."""
+    """Ubin contoh siap-klik. Yang MENGANDUNG tajuk tidak-sehat didahulukan.
+
+    MENGAPA URUTANNYA PENTING. ds_B hanya punya 66 pohon `Unhealthy` unik dari
+    5.077, jadi ubin yang diambil sembarang hampir pasti tidak memuat satu pun.
+    Pada ubin seperti itu difusi graf nol di mana-mana, seluruh skor identik, dan
+    peringkatnya tidak berarti apa-apa - `score_photo()` menandainya `degenerate`.
+    Itu perilaku yang BENAR, tetapi contoh bawaan yang selalu degenerate membuat
+    demo tampak rusak. Jadi ubin ber-gejala didahulukan, dan ubin bersih tetap
+    disertakan supaya kasus "tidak ada gejala" bisa diperagakan juga.
+    """
+    import csv as _csv
     import glob
-    out = []
+
+    crowns = os.path.join(ROOT, "data_clean", "layer1_crowns.csv")
+    sick_tiles, clean = [], []
+    if os.path.isfile(crowns):
+        seen = set()
+        for r in _csv.DictReader(open(crowns, encoding="utf-8")):
+            if r["label"] == "Unhealthy" and r["tile"] not in seen:
+                seen.add(r["tile"])
+                p = os.path.join(L1, "ds_B", "train", r["tile"])
+                if os.path.isfile(p):
+                    sick_tiles.append(p)
     for ortho in ("44000_16000", "44000_4000", "52000_20000"):
         g = sorted(glob.glob(os.path.join(L1, "ds_B", "train", ortho + "_*.jpg")))
-        out += g[:max(1, n // 3)]
-    return out[:n]
+        clean += g[:1]
+    out = sick_tiles[:max(1, n - 2)] + [p for p in clean if p not in sick_tiles]
+    return out[:n] if out else clean[:n]
+
+
+V3_CKPT = os.path.join(L2, "stgnn_v3_photo.pt")
+
+
+def score_photo(df, info, mode="biner"):
+    """Peringkat risiko UNTUK CITRA YANG DIUNGGAH, memakai checkpoint v3-foto.
+
+    Inilah yang membuat demo ini benar-benar unggah -> proses -> hasil. Checkpoint
+    penuh (`stgnn_final.pt`) TIDAK BISA dipakai di sini: ia meminta 24 kolom, 18 di
+    antaranya mustahil dari satu foto, dan mengisinya nol dilarang. `stgnn_v3_photo.pt`
+    dilatih pada SATU kolom - `is_sympt` - yaitu persis yang detektor keluarkan.
+
+    Set berisiko = tajuk yang terdeteksi SEHAT. Tajuk `Unhealthy` tidak diberi skor;
+    ia sudah bergejala, jadi ia SUMBER, bukan sasaran - cermin aturan Eg9PP bahwa
+    hanya pohon berstatus 'A' yang masuk risk set.
+
+    Skala adjacency dihitung ulang dari graf foto itu sendiri (1 / derajat rata-rata),
+    sama seperti saat latih, sehingga difusinya berarti "fraksi tetangga yang sakit"
+    di kedua sisi.
+    """
+    import torch
+    from scipy.spatial import cKDTree
+
+    import models_real as M
+
+    if not os.path.isfile(V3_CKPT):
+        raise SystemExit("%s tidak ada — jalankan layer2_real/train_final_v3.py" % V3_CKPT)
+    if not info.get("ok_n") or df.empty:
+        return None
+
+    xy = df[["cx", "cy"]].values.astype(np.float64)
+    n = len(xy)
+    r = R_GRAPH_MULT * info["spacing_px"]
+    A = np.zeros((n, n), np.float32)
+    for i, j in cKDTree(xy).query_pairs(r):
+        A[i, j] = A[j, i] = 1.0
+    deg = A.sum(1)
+    scale = 1.0 / (float(deg.mean()) + 1e-8)
+
+    if mode == "kontinu" and "unh" in df:
+        sympt = df.unh.values.astype(np.float32)
+    else:
+        sympt = (df.cls.values == "Unhealthy").astype(np.float32)
+    hard = (df.cls.values == "Unhealthy")
+    F = torch.as_tensor(sympt.reshape(1, n, 1))                 # (T=1, N, d=1)
+    D = torch.einsum("ij,tjd->tid", torch.as_tensor(A * scale), F).unsqueeze(2)
+
+    try:
+        ck = torch.load(V3_CKPT, map_location="cpu", weights_only=True)
+    except Exception:
+        ck = torch.load(V3_CKPT, map_location="cpu", weights_only=False)
+    model = M.build(ck["model_class"], ck["arch"]["in_dim"], horizon=ck["task"]["horizon"])
+    model.load_state_dict(ck["state_dict"], strict=True)
+    model.eval()
+
+    risk_idx = np.flatnonzero(~hard)              # risk set SELALU dari kelas keras,
+    #                                            supaya kedua mode menilai pohon yang sama
+    if risk_idx.size == 0:
+        return None
+    ii = torch.as_tensor(risk_idx, dtype=torch.long)
+    with torch.no_grad():
+        logit = model(F[0, ii].unsqueeze(1), D[0, ii].unsqueeze(1)).numpy()
+
+    out = pd.DataFrame({
+        "idx": risk_idx,
+        "cx": xy[risk_idx, 0], "cy": xy[risk_idx, 1],
+        "skor": logit,
+        "tetangga": deg[risk_idx].astype(int),
+        # SELALU dari kelas keras, di kedua mode. Di mode kontinu `sympt` berisi
+        # keyakinan pecahan, sehingga A @ sympt menghasilkan jumlah KEYAKINAN
+        # (maks 0,91 pada ubin khas) - dan astype(int) memotongnya jadi 0, membuat
+        # seluruh kolom nol padahal tetangga sakitnya ada. Label kolom ini
+        # menjanjikan HITUNGAN POHON, jadi itu yang harus dihitung.
+        "tetangga_sakit": (A[risk_idx] @ hard.astype(np.float32)).round().astype(int),
+    }).sort_values("skor", ascending=False).reset_index(drop=True)
+    out.insert(0, "peringkat", np.arange(1, len(out) + 1))
+    # Pita diwarnai menurut SKOR YANG BENAR-BENAR BERBEDA, bukan posisi urutan.
+    #
+    # MENGAPA. Model foto menerima satu masukan efektif: jumlah tetangga sakit
+    # dibagi derajat rata-rata. Skornya karena itu fungsi deterministik dari satu
+    # bilangan bulat - pohon dengan hitungan tetangga sakit yang sama mendapat skor
+    # IDENTIK. Pada ubin khas dengan 0-1 pohon sakit, seluruh 86 pohon hanya punya
+    # DUA skor berbeda.
+    #
+    # Membelahnya jadi lima kuintil menurut posisi urutan akan menampilkan lima pita
+    # warna padahal model membedakan dua kelompok, dan urutan di dalam kelompok yang
+    # seri itu sembarang. Itu memalsukan presisi yang tidak ada. Jadi jumlah pita =
+    # jumlah tingkat yang sungguh-sungguh dibedakan model, dan UI menyebut angkanya.
+    lev = out.skor.rank(method="dense", ascending=True).astype(int)   # 1 = paling aman
+    n_lev = int(lev.max())
+    out["tingkat"] = lev
+    out["n_tingkat"] = n_lev
+    # Petakan ke ujung-ujung ramp supaya dua tingkat tetap terbedakan jelas.
+    span = np.linspace(1, 5, n_lev) if n_lev > 1 else np.array([5.0])
+    out["kuintil"] = [int(round(span[v - 1])) for v in lev]
+    # Kalau TIDAK ADA tajuk bergejala di foto, difusinya nol di mana-mana dan
+    # seluruh skor identik. Peringkat dalam keadaan itu tidak berarti apa pun, dan
+    # UI wajib mengatakannya alih-alih menampilkan urutan yang sebetulnya acak.
+    degenerate = bool(hard.sum() == 0) or float(np.ptp(logit)) < 1e-9
+    return {"tabel": out, "n_sumber": int(hard.sum()), "n_risk": len(out),
+            "mode": mode,
+            "degenerate": degenerate,
+            "sumber_xy": xy[np.flatnonzero(hard)],
+            "n_tingkat": int(out.tingkat.max()),
+            "scope_warning": ck["scope_warning"], "ckpt": os.path.basename(V3_CKPT)}
+
+
+R_GRAPH_MULT = 1.5
+
+
+def outbreak_foci(df, info):
+    """Kelompokkan tajuk bergejala jadi PUSAT WABAH. Tanpa model, tanpa klaim baru.
+
+    Dua tajuk bergejala masuk pusat yang sama bila terhubung lewat graf kontak -
+    yaitu komponen terhubung dari subgraf yang hanya berisi pohon bergejala. Itu
+    murni pernyataan geometris: "gejala-gejala ini bersambung, yang itu terpisah".
+
+    KENAPA INI BERGUNA JUSTRU KARENA TIDAK MEMAKAI MODEL.
+    Seluruh angka model di paket ini punya batas yang harus ikut disebut. Keluaran
+    di sini tidak: ia tidak meramal apa pun, tidak memeringkat apa pun, dan tidak
+    bisa salah kecuali detektornya salah. Untuk mandor ia menjawab pertanyaan
+    pertama yang sebenarnya ditanyakan - "wabahnya ada berapa titik, di mana?"
+
+    Yang dilaporkan per pusat: jumlah tajuk bergejala, jumlah tetangga sehat yang
+    bersentuhan langsung dengannya (itu yang perlu diperiksa duluan), dan titik
+    tengahnya.
+    """
+    from scipy.spatial import cKDTree
+
+    if df is None or df.empty or not info.get("ok_n"):
+        return None
+    xy = df[["cx", "cy"]].values.astype(float)
+    sick = (df.cls.values == "Unhealthy")
+    if sick.sum() == 0:
+        return {"n_fokus": 0, "fokus": [], "n_sakit": 0, "n_terpapar": 0}
+
+    r = R_GRAPH_MULT * info["spacing_px"]
+    si = np.flatnonzero(sick)
+    kd = cKDTree(xy[si])
+    # union-find sederhana atas pasangan bergejala yang saling menjangkau
+    parent = list(range(len(si)))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for a, b in kd.query_pairs(r):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    groups = {}
+    for k in range(len(si)):
+        groups.setdefault(find(k), []).append(k)
+
+    kd_all = cKDTree(xy)
+    fokus, terpapar = [], set()
+    for g in sorted(groups.values(), key=len, reverse=True):
+        idx = si[g]
+        nb = set()
+        for i in idx:
+            nb.update(j for j in kd_all.query_ball_point(xy[i], r) if not sick[j])
+        terpapar |= nb
+        fokus.append({"n_sakit": len(idx), "n_terpapar": len(nb),
+                      "cx": float(xy[idx, 0].mean()), "cy": float(xy[idx, 1].mean()),
+                      "sakit_xy": xy[idx].tolist()})
+    return {"n_fokus": len(fokus), "fokus": fokus,
+            "n_sakit": int(sick.sum()), "n_terpapar": len(terpapar)}
+
+
+def eg9pp_payload():
+    """Data layar bukti: kisi Eg9PP + angka yang divalidasi di sana.
+
+    Layar ini ada karena jalur foto MENYEMBUNYIKAN nilai grafnya. Pada satu
+    bidikan model hanya menerima satu bilangan bulat, jadi peringkatnya identik
+    dengan menghitung tetangga sakit (Spearman +1,000). Di Eg9PP graf membawa
+    enam kolom melintasi tiga sensus, dan di situlah jaringan terlatih benar-benar
+    menimbang sesuatu. Tanpa layar ini penonton akan menilai model dari kasus
+    terlemahnya.
+    """
+    df = load_risk()
+    s = risk_summary(df)
+    x0, x1 = float(df.xm.min()), float(df.xm.max())
+    y0, y1 = float(df.ym.min()), float(df.ym.max())
+    sx = lambda v: (float(v) - x0) / max(1e-9, x1 - x0)
+    sy = lambda v: (float(v) - y0) / max(1e-9, y1 - y0)
+
+    pts = []
+    for r in df.itertuples():
+        if r.in_risk_set == 1:
+            q = int(np.ceil(r.risk_decile / 2))
+            pts.append({"x": sx(r.xm), "y": sy(r.ym), "q": max(1, min(5, q)),
+                        "nb": int(r.n_sick_neighbours)})
+        else:
+            pts.append({"x": sx(r.xm), "y": sy(r.ym), "st": r.status})
+
+    risk = df[df.in_risk_set == 1]
+    vc = risk.n_sick_neighbours.value_counts().sort_index()
+    return {
+        "points": pts, "aspect": (y1 - y0) / max(1e-9, x1 - x0),
+        "n_total": s["n_total"], "n_risk": s["n_risk"], "n_out": s["n_out"],
+        "status_out": s["status_out"],
+        "sick_rate": float(df.status.isin(["S", "D"]).mean()),
+        "levels": [{"nb": int(k), "n": int(v)} for k, v in vc.items()],
+        "top10": [{"rank": int(r.rank), "id": r.palm_id, "parcel": r.parcel,
+                   "skor": round(float(r.logit), 4),
+                   "nb_sick": int(r.n_sick_neighbours),
+                   "nb": int(r.n_neighbours)} for r in s["top10"].itertuples()],
+        "nb_top10": s["sick_nb_top10"], "nb_all": s["sick_nb_all"],
+        "nb_bot10": s["sick_nb_bot10"],
+        "facts": V3_FACTS,
+    }
 
 
 # ---------------------------------------------------------------- gambar
@@ -332,6 +619,30 @@ def fig_interface(user_deg=None, user_n=0):
     ax.set_axisbelow(True)
     from matplotlib.ticker import FuncFormatter
     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: _num(v, 1)))
+    return f
+
+
+def fig_photo_risk(img, res):
+    """Peta risiko DI ATAS FOTO PENGGUNA. Kuintil sama dengan peta Eg9PP."""
+    t = res["tabel"]
+    h = 7.0 * img.shape[0] / img.shape[1]
+    f, ax = _fig(7.0, h, axes=False)
+    ax.imshow(img)
+    # Sumber lebih dulu, di bawah: pohon yang SUDAH bergejala tidak diberi skor.
+    src = res.get("sumber_xy")
+    if src is not None and len(src):
+        ax.scatter(src[:, 0], src[:, 1], s=70, marker="X", c=PALETTE["ink"],
+                   edgecolors="white", linewidths=1.4, zorder=3,
+                   label="sudah bergejala (%d) — sumber" % len(src))
+    for q in range(1, 6):
+        m = t.kuintil == q
+        if m.any():
+            ax.scatter(t.cx[m], t.cy[m], s=52, c=PALETTE["quintile"][q - 1],
+                       edgecolors="white", linewidths=1.2, zorder=4,
+                       label="kuintil %d%s" % (q, " · prioritas" if q == 5 else ""))
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.01), ncol=3,
+              frameon=False, fontsize=8, labelcolor=PALETTE["ink_2"])
     return f
 
 

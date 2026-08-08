@@ -91,3 +91,67 @@ STRUKTUR    = true     - random     nilai peta kontak yang benar
 
 Pelaporan: mean ± std antar-seed, **sign-count** (mis. 19/20), dan vonis `INCONCLUSIVE`
 bila selisih berada di dalam 1 std. Metrik = **AUC-PR** (pos-rate 1,6–5,7%).
+
+---
+
+## Penyimpangan kontrak yang DINYATAKAN: varian v3 (foto tunggal)
+
+`dataset_v3.py` + `run_v3.py` **sengaja melanggar dua butir di atas**. Ditulis di sini
+karena CLAUDE.md mewajibkan perubahan kontrak dinyatakan eksplisit, bukan dilakukan
+diam-diam. Garis dasar beku tidak tersentuh: v3 adalah berkas baru, `results_real.csv`
+dan `results_v2.csv` tidak berubah.
+
+| butir | kontrak | v3 | alasan |
+|---|---|---|---|
+| `WINDOW` | dikunci 3 | **1** | satu foto = satu sensus; tidak ada riwayat untuk dibaca |
+| Larangan **#5** | genotipe wajib | **dibuang** | genotipe tak terlihat dari udara — 14 dari 24 kolom |
+
+### Mengapa `WINDOW=1` bukan pelanggaran yang merusak
+
+Di dalam satu sensus, `t_years`, `census_idx`, `dt_prev`, dan `log1p_t` **identik untuk
+semua pohon**. Blok SELF karena itu tidak membedakan apa pun antar-pohon di dalam satu
+bidikan; ia hanya berguna untuk membandingkan antar-sensus, tugas yang bukan tugas
+varian ini. Membuangnya tidak menghilangkan informasi yang relevan bagi peringkat
+dalam-bidikan.
+
+Konsekuensinya juga menuntut metrik yang berbeda, dan itu yang membuat perbandingannya
+sah: AP gabungan memberi nilai pada kemampuan menebak *sensus mana ini* — berguna untuk
+angka gabungan, nol guna untuk memeringkat pohon di dalam satu foto. `run_v3.py` karena
+itu melaporkan **AP dalam-sensus** sebagai angka yang menentukan. Model penuh kehilangan
+47% nilainya di bawah metrik itu (0,1818 → 0,0973); v3 nyaris tidak kehilangan apa pun
+(0,1259 → 0,1015).
+
+### Mengapa larangan #5 boleh dicabut DI SINI, dan hanya di sini
+
+Larangan #5 ada karena kontaminasi famili **tidak terukur**. Untuk v3 ia sudah diukur,
+dengan null permutasi dalam-famili (`run_v3_perm.py`, 200 permutasi, lintasan per-pohon
+ditukar hanya antar pohon sefamili, kisi tidak pernah bergerak):
+
+| strata | teramati | null | kelebihan | z | perm ≥ teramati |
+|---|---|---|---|---|---|
+| `progeny` | 0,1016 | 0,0748 ± 0,0043 | **+0,0268** | +6,25 | **0/200** |
+| `progeny+parcel` | 0,1016 | 0,0772 ± 0,0040 | **+0,0244** | +6,04 | **0/200** |
+
+Terhadap garis tanpa-graf 0,0632, pada strata terketat:
+
+```
+kekerabatan + petak   +0,0140    36%
+susunan spasial       +0,0244    64%
+```
+
+Jadi kontaminasi famili **nyata dan sebesar 36%** — bukan nol, bukan segalanya. Yang
+tersisa setelah famili DAN petak dipegang tetap adalah efek spasial, dan tak satu pun
+dari 200 permutasi menyentuhnya.
+
+Pencabutan ini **tidak berlaku** untuk `run_real.py` maupun `run_v2.py`. Di sana
+genotipe tetap wajib: angka-angka itu tidak punya null yang menguantifikasi kontaminasi
+famili, jadi larangan #5 tetap mengikat sepenuhnya.
+
+### Batas yang tetap melekat pada v3
+
+1. **Efek graf v3 mengandung 36% kekerabatan.** Angka mentahnya tidak boleh dikutip
+   seolah seluruhnya penularan.
+2. **"Kondisi tetangga" dari foto bukan Ganoderma.** v3 dilatih pada status Eg9PP yang
+   terverifikasi lapangan; dipakai pada citra, masukannya kesehatan tajuk generik hasil
+   detektor. Ongkos substitusi itu kini **terukur**: pada laju detektor ds_B (recall 0,446 · fpr 0,0094) AP dalam-sensus turun 0,0916 -> 0,0800, lift 1,45x -> 1,27x, **59% sinyal bertahan**. Sisa batasnya: laju itu diukur di ds_B, kebun yang berbeda dari Eg9PP.
+3. Tetap satu kebun percobaan, dua parcel. Tidak ada yang berubah soal itu.

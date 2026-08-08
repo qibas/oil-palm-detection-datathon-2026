@@ -13,9 +13,29 @@ letaknya.
 **Lapisan 2 adalah INGATAN.** Diberi satu kebun yang dipantau 25 tahun, ia menebak pohon sehat mana
 yang paling mungkin sakit berikutnya.
 
-**Mata dan ingatan ini berasal dari dua kebun berbeda, dan kami tidak menyambungnya.** Kebun beda,
-zaman beda, tidak ada kunci penghubung. Yang kami lakukan: **mengukur apakah keduanya akan cocok
-kalau disambung.**
+**Mata dan ingatan ini berasal dari dua kebun berbeda, dan kami tidak menyambung datanya.** Kebun
+beda, zaman beda, tidak ada kunci penghubung. Yang kami lakukan: **mengukur apakah keduanya akan
+cocok kalau disambung.**
+
+> ### ⚠ Diperbarui — varian foto-tunggal (v3) mengubah klaim alur produk
+>
+> Dokumen ini semula menulis bahwa peringkat risiko **tidak bisa** dihasilkan dari satu foto,
+> karena model meminta 24 kolom dan foto hanya mengisi sebagian. Itu benar untuk checkpoint
+> `stgnn_final.pt`, dan **masih benar** untuknya.
+>
+> Tetapi varian `v3` yang dilatih ulang tanpa waktu dan tanpa genotipe **menyamai model penuh**
+> pada tugas yang sebenarnya — memeringkat pohon di dalam satu bidikan (AP dalam-sensus
+> 0,1015 lawan 0,0973; selisih +0,0042 ± 0,0035, 36/40). Alasannya: di dalam satu sensus, umur
+> dan tanggal identik untuk semua pohon, jadi kolom waktu tidak membedakan apa pun.
+>
+> **Untuk UI ini artinya:** alur tiga langkah di §2 tetap sah sebagai cerita produk *lengkap*,
+> tetapi Langkah 3 **tidak lagi harus** menunggu riwayat 3 kunjungan kalau yang diminta hanya
+> peringkat dalam satu bidikan. Kalau UI diperbarui, pakai angka v3 di §4, bukan angka model
+> penuh — dan bawa serta kedua batasnya: efek graf v3 mengandung **36% kekerabatan**, dan
+> masukan "kondisi tetangga" dari foto adalah kesehatan tajuk generik, **belum pernah diuji**
+> sebagai pengganti status terverifikasi lapangan.
+>
+> Rincian: `00_HASIL.md` §2.5 · kontrak: `layer2_real/INTERFACE.md` bagian akhir.
 
 ### Perumpamaan untuk juri: lebar rel kereta
 
@@ -109,6 +129,10 @@ model membaca tetangga, bukan pohon itu sendiri.
 | Selisih antarmuka | **3,5%** | |
 | Jumlah sawit dinilai | **672** dari 1.200 | sisanya sudah sakit/mati/disensor |
 | Panjang pemantauan | **45 sensus, 25 tahun** | Eg9PP |
+| **v3 — peringkat dari satu bidikan** | **AP dalam-sensus 0,1015 ± 0,0079** | 1,61× garis tanpa-skill 0,0632 |
+| v3 — model penuh, metrik yang sama | 0,0973 ± 0,0107 | v3 **menyamai**, +0,0042 ± 0,0035 (36/40) |
+| v3 — sumbangan peta kontak benar | +0,0296 ± 0,0057 (40/40) | 77% sinyal v3 |
+| v3 — kontaminasi kekerabatan | **36%** | null dalam-famili+petak, 0/200 permutasi |
 
 **Jangan** tampilkan mAP sebagai prestasi utama. Angkanya 0,687 dan itu **bukan** kelemahan model —
 kotak acuan pada datanya adalah cap berukuran tetap, jadi mAP punya langit-langit yang tidak bisa

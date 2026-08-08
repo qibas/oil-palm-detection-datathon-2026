@@ -1,0 +1,8 @@
+ap_mean,ap_std,blok,catatan,fitur,h,kolom,lift,n,sign,tingkat,varian,vonis
+0.09162779533932319,0.008122624899857786,v3-cols,yang bisa diberi detektor SEKARANG,is_sympt,3,1,1.44980688828043,20,,7,1 kolom  is_sympt,
+0.09618526018918025,0.00814254638253064,v3-cols,kalau detektor punya kelas mati  <- TARGET,is_sympt|is_dead,3,2,1.5219186738794341,20,,23,2 kolom  + is_dead,
+0.09990916045254207,0.0077450551372484746,v3-cols,is_cens mustahil dari foto,is_sympt|is_dead|is_cens,3,3,1.580841146400982,20,,46,3 kolom  + is_cens,
+0.10151728676563565,0.00807044168588428,v3-cols,butuh dua kunjungan,is_sympt|is_dead|is_cens|d_sympt|d_dead|d_cens,3,6,1.606286183000564,20,,161,6 kolom  + selisih,
+0.004557464849857076,0.00043392357373641814,v3-cols-paired,,,3,,,20,20/20,,NILAI KELAS MATI      (2 kolom - 1 kolom),POS
+0.0037239002633618103,0.0008404458573641109,v3-cols-paired,,,3,,,20,20/20,,+ penyensoran         (3 kolom - 2 kolom),POS
+0.0016081263130936032,0.0006888626690358217,v3-cols-paired,,,3,,,20,20/20,,+ selisih antar waktu (6 kolom - 3 kolom),POS

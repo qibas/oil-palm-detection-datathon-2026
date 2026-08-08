@@ -82,8 +82,10 @@ code,pre,[data-testid="stMetricValue"]{font-family:'JetBrains Mono',ui-monospace
 with st.sidebar:
     st.markdown("### Batas yang selalu berlaku")
     st.markdown(
-        "- Keluaran adalah **peringkat**, bukan peluang. Skor 0,51 berarti *lebih "
-        "berisiko daripada* yang berskor 0,30 — **bukan** 51% kemungkinan sakit.\n"
+        "- Skor untuk **mengurutkan**, bukan memperkirakan. Sawit di peringkat 1 "
+        "lebih berisiko daripada peringkat 10 — angkanya **tidak** berarti "
+        "“sekian persen akan sakit”. Terukur: sigmoid(skor) 0,50–0,60 "
+        "sesungguhnya sakit **23,6%**, bukan 55%.\n"
         "- Label citra adalah **kesehatan tajuk umum**, bukan BSR/Ganoderma "
         "terverifikasi lapangan.\n"
         "- Model dilatih di **kebun percobaan pemuliaan**, bukan kebun produksi.\n"
@@ -103,8 +105,8 @@ st.markdown(
 
 t1, t2, t3, t4 = st.tabs(["Langkah 1 · Daftarkan kebun",
                           "Langkah 1 · Peta kontak",
-                          "Langkah 2 · Apa yang masih kurang",
-                          "Langkah 3 · Peringkat risiko"])
+                          "Langkah 1b · Cek kesiapan",
+                          "Langkah 2 · Peringkat risiko"])
 
 # ---------------------------------------------------------------- 1. deteksi
 with t1:
@@ -250,14 +252,69 @@ with t3:
 
 # ---------------------------------------------------------------- 4. risiko
 with t4:
-    st.subheader("Peringkat risiko di kebun Eg9PP")
+    st.subheader("Peringkat risiko dari foto kamu")
+    df_d, info_d = st.session_state["det"]
+    res = core.score_photo(df_d, info_d) if info_d.get("ok_n") else None
+
+    if res is None:
+        st.warning("Proses satu citra dulu di Langkah 1 yang cukup luas untuk "
+                   "membangun graf.")
+    elif res["degenerate"]:
+        st.warning(
+            "**Tidak ada tajuk bergejala terdeteksi di citra ini**, jadi tidak ada "
+            "sumber penularan — difusi graf nol di mana-mana dan seluruh skor identik. "
+            "Peringkat dalam keadaan ini tidak berarti apa pun, jadi tidak ditampilkan.  \n"
+            "Ini bukan galat: model memang hanya bisa memeringkat **relatif terhadap "
+            "gejala yang terlihat**. Pilih citra contoh lain di Langkah 1 yang memuat "
+            "tajuk tidak sehat."
+        )
+    else:
+        t = res["tabel"]
+        a, b, c_, d = st.columns(4)
+        a.metric("Pohon dinilai", res["n_risk"])
+        b.metric("Sumber (bergejala)", res["n_sumber"])
+        c_.metric("Prioritas (kuintil 5)", int((t.kuintil == 5).sum()))
+        d.metric("Tetangga sakit, 5 teratas", n(t.head(5).tetangga_sakit.mean(), 2))
+
+        c1, c2 = st.columns([3, 2])
+        with c1:
+            from PIL import Image
+            img = np.array(Image.open(st.session_state["det_path"]).convert("RGB"))
+            st.pyplot(core.fig_photo_risk(img, res), width='stretch')
+        with c2:
+            st.markdown("**Sepuluh prioritas teratas**")
+            st.dataframe(t.head(10)[["peringkat", "skor", "tetangga",
+                                     "tetangga_sakit", "kuintil"]],
+                         width='stretch', hide_index=True)
+            st.markdown(
+                "Skor **hanya berarti urutan**. Yang diperiksa duluan adalah yang "
+                "paling atas, bukan yang “paling mungkin sakit sekian persen”."
+            )
+        with st.expander("Peringatan lengkap yang tersimpan di dalam checkpoint"):
+            st.code(res["scope_warning"], language=None)
+            st.caption("checkpoint: `layer2_real/%s`" % res["ckpt"])
+
     st.info(
-        "**Inilah bentuk keluaran yang akan kamu terima** begitu kebunmu punya keempat "
-        "bahan di Langkah 2.  \nYang ditampilkan di bawah adalah kebun **Eg9PP** — "
-        "1.200 sawit, 45 sensus, 25 tahun, Ganoderma terverifikasi lapangan — **bukan** "
-        "kebun dari foto yang kamu proses. Satu foto belum bisa menghasilkan peringkat "
-        "ini karena “memburuk” butuh minimal dua titik waktu."
+        "Model yang dipakai di sini adalah **v3-foto** — dilatih ulang hanya dengan "
+        "`is_sympt`, satu-satunya kolom yang bisa diberi satu foto. Pada tugas "
+        "memeringkat di dalam satu bidikan ia **menyamai** model 24-kolom "
+        "(AP dalam-sensus 0,1015 lawan 0,0973). Checkpoint penuh `stgnn_final.pt` "
+        "**tidak dipakai** di sini: ia meminta 18 kolom yang mustahil dari foto, dan "
+        "mengisinya nol dilarang."
     )
+    st.warning(
+        "**Dua batas yang melekat.** Efek graf v3 mengandung **36% kontaminasi "
+        "kekerabatan** (null dalam-famili+petak, 200 permutasi). Dan kolom `is_sympt` "
+        "di sini diisi kelas **Unhealthy detektor** — kesehatan tajuk generik — "
+        "sementara model dilatih pada status Eg9PP yang terverifikasi lapangan. "
+        "Ongkos substitusi itu **sudah diukur**: 59% sinyal bertahan, "
+        "lift 1,45× → **1,27×**."
+    )
+
+    st.divider()
+    st.markdown("#### Di mana angkanya divalidasi: kebun Eg9PP")
+    st.caption("1.200 sawit · 45 sensus · 25 tahun · Ganoderma terverifikasi lapangan. "
+               "Bukan kebun dari fotomu — di sinilah performa model diukur.")
     dfr = core.load_risk()
     s = core.risk_summary(dfr)
     a, b, c, d = st.columns(4)

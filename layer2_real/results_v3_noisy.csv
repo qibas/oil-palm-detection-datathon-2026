@@ -1,0 +1,2 @@
+blok,h,recall,fpr,sumber_laju,n_clean,n_noisy,ap_clean,ap_clean_std,ap_noisy,ap_noisy_std,no_skill,sinyal_bertahan
+v3-noisy,3,0.446,0.0094,env,20,400,0.09162779533932319,0.008122624899857786,0.07998095820996944,0.006983781478564848,0.0632,0.5903010771558816

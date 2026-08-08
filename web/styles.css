@@ -1,0 +1,238 @@
+/* Token SawitGuard Design System (claude.ai/design) — disalin verbatim.
+   Tata letak mengikuti "SawitGuard Mockups.dc.html" (proyek f00d4173).
+   Satu penyimpangan yang disengaja: ramp risiko, lihat blok --q1..q5 di bawah. */
+:root{
+/* Brand */
+--lime-300:#DCF77E; --lime-400:#CDF04F; --lime-500:#C3EC3C; --lime-600:#A8D122;
+--green-300:#8FE096; --green-400:#6BD675; --green-500:#4EC75B;
+--green-600:#37A845; --green-700:#27803A;
+/* Ink & neutrals */
+--ink-900:#1A1C17; --ink-700:#3D423A; --ink-500:#6A7065;
+--ink-300:#A9AFA3; --ink-200:#D4D9CF; --ink-100:#E6EAE1;
+/* Surfaces */
+--mint-50:#EDF2E9; --mint-100:#E2EADB; --white:#FFFFFF;
+--status-warn:#F2C037; --status-danger:#E5484D;
+/* Semantic */
+--surface-app:var(--mint-50); --surface-card:var(--white);
+--text-body:var(--ink-900); --text-secondary:var(--ink-700); --text-muted:var(--ink-500);
+--border-default:var(--ink-200); --action-primary:var(--lime-500);
+--action-primary-hover:var(--lime-600); --link:var(--green-700);
+/* Type */
+--font-display:"Space Grotesk",system-ui,sans-serif;
+--font-body:"Instrument Sans",system-ui,sans-serif;
+--font-mono:"JetBrains Mono",ui-monospace,monospace;
+--text-xs:12px; --text-sm:13px; --text-base:15px; --text-md:17px;
+--text-lg:21px; --text-xl:26px; --text-2xl:34px; --text-3xl:44px;
+--tracking-tight:-0.02em; --tracking-caps:0.08em;
+/* Space */
+--space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+--space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px; --space-16:64px;
+/* Shape & depth */
+--radius-sm:10px; --radius-md:16px; --radius-lg:24px; --radius-xl:32px;
+--radius-pill:999px;
+--shadow-card:0 1px 2px rgba(26,28,23,.05),0 4px 16px rgba(26,28,23,.06);
+--shadow-raised:0 6px 24px rgba(26,28,23,.12);
+--ease-out:cubic-bezier(.16,1,.3,1); --duration-fast:120ms; --duration-base:200ms;
+
+/* Ramp risiko — SATU WARNA, menggantikan --risk-1..6 bawaan design system.
+   Mockup memakai ramp asli (hijau→lime→amber→jingga→merah). Ramp itu GAGAL empat
+   cek: kecerahan tidak monoton, langkah lime↔amber berjarak 0,028, ujung terang
+   1,70:1, rentang rona 122° (rainbow tidak sah untuk skala berurutan). Yang paling
+   berbahaya: lime lawan amber ΔE 1,7 pada protanopia — dua tingkat risiko yang
+   praktis sewarna bagi ~8% pembaca pria, di peta yang seluruh pesannya warna.
+   Pengganti ini memakai --risk-5/--risk-6 merek sebagai langkah tengah, lolos
+   keempat cek, dan merah tetap berarti bahaya. */
+--q1:#EE9A87; --q2:#E5484D; --q3:#B32B30; --q4:#822024; --q5:#4F1315;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--surface-app); color:var(--text-body);
+  font-family:var(--font-body); font-size:var(--text-base); line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--font-display); letter-spacing:var(--tracking-tight);
+  line-height:1.1; margin:0}
+code,.mono{font-family:var(--font-mono)}
+.muted{color:var(--text-muted)} .sec{color:var(--text-secondary)}
+.eyebrow{font:600 11px var(--font-body); letter-spacing:var(--tracking-caps);
+  text-transform:uppercase; color:var(--text-muted)}
+
+/* ---------------- app chrome (dari mockup: header dengan stepper di kanan) ---- */
+.appbar{display:flex; align-items:center; justify-content:space-between;
+  padding:var(--space-5) var(--space-10); border-bottom:1px solid var(--ink-100);
+  background:var(--surface-app); position:sticky; top:0; z-index:20}
+.mark{font:700 20px var(--font-display); letter-spacing:var(--tracking-tight)}
+.mark i{font-style:normal; color:var(--lime-600)}
+.page{max-width:880px; margin:0 auto; padding:56px var(--space-8) var(--space-12)}
+.page-wide{max-width:1240px; margin:0 auto; padding:var(--space-8) var(--space-8) 44px}
+
+/* ---------------- stepper ---------------- */
+.stepper{display:flex; align-items:center; gap:var(--space-2)}
+.stepper .s{display:flex; align-items:center; gap:7px; border-radius:var(--radius-pill);
+  padding:6px 14px; font:500 13px var(--font-body); color:var(--text-muted);
+  background:transparent; transition:all var(--duration-base) var(--ease-out)}
+.stepper .s .n{display:grid; place-items:center; width:19px; height:19px;
+  border-radius:var(--radius-pill); background:var(--ink-100);
+  font:500 10px var(--font-mono); color:var(--text-muted)}
+.stepper .s.done{color:var(--green-700)}
+.stepper .s.done .n{background:var(--green-500); color:#fff}
+.stepper .s.active{background:var(--ink-900); color:var(--mint-50)}
+.stepper .s.active .n{background:var(--lime-500); color:var(--ink-900)}
+.stepper .sep{width:14px; height:1px; background:var(--ink-200)}
+
+/* ---------------- cards ---------------- */
+.card{background:var(--surface-card); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-card); padding:var(--space-5)}
+.grid{display:grid; gap:var(--space-5)}
+.g-results{grid-template-columns:1.8fr 1fr; align-items:start; gap:var(--space-5)}
+.g3{grid-template-columns:repeat(3,1fr); gap:14px}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:1040px){.g-results,.g4{grid-template-columns:1fr}}
+
+/* ---------------- dropzone ---------------- */
+.drop{border:1.5px dashed var(--ink-300); border-radius:var(--radius-xl);
+  padding:44px var(--space-6); text-align:center; background:var(--white);
+  cursor:pointer; transition:all var(--duration-base) var(--ease-out)}
+.drop:hover,.drop.over{border-color:var(--green-600); background:var(--mint-100)}
+.drop .ico{width:44px; height:44px; border-radius:var(--radius-pill);
+  background:var(--lime-500); display:grid; place-items:center; margin:0 auto 14px}
+.drop .big{font:500 var(--text-md) var(--font-display)}
+
+/* ---------------- sample cards (mockup: 130px, radius 20, pil caption) -------- */
+.samp{border-radius:20px; overflow:hidden; position:relative; cursor:pointer;
+  transition:all var(--duration-fast) var(--ease-out); outline:3px solid transparent;
+  outline-offset:2px}
+.samp img{width:100%; height:130px; object-fit:cover; display:block}
+.samp:hover{transform:translateY(-2px)}
+.samp.sel{outline-color:var(--green-600)}
+.samp .cap{position:absolute; left:10px; bottom:10px; background:rgba(255,255,255,.92);
+  border-radius:var(--radius-pill); padding:5px 12px; font:600 12px var(--font-body)}
+
+/* ---------------- buttons ---------------- */
+.btn{border:none; border-radius:var(--radius-pill); cursor:pointer;
+  font:600 var(--text-base) var(--font-body); padding:13px 26px;
+  transition:all var(--duration-fast) var(--ease-out)}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{outline:none; box-shadow:0 0 0 3px rgba(39,128,58,.35)}
+.btn-primary{background:var(--action-primary); color:var(--ink-900)}
+.btn-primary:hover{background:var(--action-primary-hover)}
+.btn-ghost{background:transparent; color:var(--text-secondary);
+  border:1px solid var(--border-default)}
+.btn-ghost:hover{background:var(--mint-100)}
+.btn-sm{padding:9px 18px; font-size:13px}
+.btn[disabled]{opacity:.45; cursor:not-allowed; transform:none}
+
+/* ---------------- badges & chips ---------------- */
+.badge{display:inline-flex; align-items:center; border-radius:var(--radius-pill);
+  padding:4px 12px; font:600 12px var(--font-body)}
+.badge.inverse{background:var(--ink-900); color:var(--mint-50)}
+.badge.lime{background:var(--lime-500); color:var(--ink-900)}
+.badge.neutral{background:var(--mint-100); color:var(--text-secondary)}
+.chip{border:1px solid var(--border-default); background:var(--white);
+  border-radius:var(--radius-pill); padding:8px 18px; cursor:pointer;
+  font:500 13px var(--font-body); color:var(--text-secondary);
+  transition:all var(--duration-fast) var(--ease-out)}
+.chip:hover{background:var(--mint-100)}
+.chip.on{background:var(--ink-900); color:var(--mint-50); border-color:var(--ink-900)}
+
+/* ---------------- switch ---------------- */
+.sw{display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+  font-size:13px; color:var(--text-secondary)}
+.sw .track{width:38px; height:22px; border-radius:var(--radius-pill);
+  background:var(--ink-200); position:relative;
+  transition:background var(--duration-base) var(--ease-out)}
+.sw .track i{position:absolute; top:3px; left:3px; width:16px; height:16px;
+  border-radius:50%; background:#fff; transition:left var(--duration-base) var(--ease-out)}
+.sw.on .track{background:var(--green-500)} .sw.on .track i{left:19px}
+
+/* ---------------- progress ---------------- */
+.pb .row{display:flex; justify-content:space-between; align-items:baseline;
+  margin-bottom:7px; font-size:13px}
+.pb .lab{font-weight:500} .pb .det{color:var(--text-muted); font:400 12px var(--font-mono)}
+.bar{height:6px; border-radius:var(--radius-pill); background:var(--mint-100); overflow:hidden}
+.bar>i{display:block; height:100%; background:var(--lime-500);
+  transition:width 420ms var(--ease-out)}
+
+/* ---------------- table ---------------- */
+table{border-collapse:collapse; width:100%; font-size:13px}
+th{text-align:left; font:600 11px var(--font-body); color:var(--text-muted);
+  letter-spacing:var(--tracking-caps); text-transform:uppercase;
+  padding:0 var(--space-4) var(--space-2)}
+td{padding:10px var(--space-4); border-top:1px solid var(--ink-100);
+  font-variant-numeric:tabular-nums}
+td.num{font-family:var(--font-mono)}
+tbody tr:hover{background:var(--mint-100)}
+.rank-pill{display:inline-grid; place-items:center; width:22px; height:22px;
+  border-radius:var(--radius-pill); background:var(--ink-900); color:var(--mint-50);
+  font:500 11px var(--font-mono)}
+
+/* ---------------- viz ---------------- */
+.viz{position:relative; border-radius:20px; overflow:hidden; background:var(--ink-900)}
+.viz img{width:100%; display:block}
+.viz canvas{position:absolute; inset:0; width:100%; height:100%}
+.legend{display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+  font-size:12px; color:var(--text-muted)}
+.legend .sw2{display:inline-flex; align-items:center; gap:6px}
+.dot{width:10px; height:10px; border-radius:50%; display:inline-block}
+.ramp{display:flex; width:100%; border-radius:var(--radius-pill); overflow:hidden}
+.ramp i{flex:1 1 0; height:10px; display:block}
+.ramp-lab{display:flex; justify-content:space-between; margin-top:7px;
+  font-size:12px; color:var(--green-700)}
+
+/* ---------------- notes ---------------- */
+.note{border-radius:20px; padding:18px; font-size:13px; line-height:1.5}
+.note-soft{background:var(--mint-100); color:var(--text-secondary)}
+.note-warn{background:#FDF4DE; color:#6B4E06}
+.note-limit{background:var(--ink-900); color:var(--mint-50)}
+.note-limit b{color:var(--lime-400)}
+.fine{font-size:12px; color:var(--text-muted); line-height:1.55}
+
+.fade{animation:fade var(--duration-base) var(--ease-out)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pulse{animation:pulse 1.4s var(--ease-out) infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.spin{animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------------- layar bukti (Eg9PP) ---------------- */
+.navlink{background:transparent; border:1px solid var(--border-default);
+  border-radius:var(--radius-pill); padding:7px 16px; cursor:pointer;
+  font:500 13px var(--font-body); color:var(--text-secondary);
+  transition:all var(--duration-fast) var(--ease-out)}
+.navlink:hover{background:var(--mint-100)}
+.navlink.on{background:var(--ink-900); color:var(--mint-50); border-color:var(--ink-900)}
+.lattice{width:100%; display:block; background:var(--white); border-radius:20px}
+.kv{display:flex; justify-content:space-between; gap:12px; padding:9px 0;
+  border-top:1px solid var(--ink-100); font-size:13px}
+.kv:first-child{border-top:none}
+.kv b{font-family:var(--font-mono); font-weight:500}
+.levbar{display:flex; align-items:flex-end; gap:3px; height:64px; margin-top:10px}
+.levbar div{flex:1; background:var(--green-500); border-radius:4px 4px 0 0;
+  position:relative; min-height:2px}
+.levbar span{position:absolute; bottom:-18px; left:0; right:0; text-align:center;
+  font:400 10px var(--font-mono); color:var(--text-muted)}
+.cmp{display:grid; grid-template-columns:1fr auto auto; gap:6px 14px;
+  align-items:baseline; font-size:13px}
+.cmp .h{font:600 11px var(--font-body); letter-spacing:var(--tracking-caps);
+  text-transform:uppercase; color:var(--text-muted)}
+.cmp .n{font-family:var(--font-mono); text-align:right}
+
+/* ---------------- expander batasan teknis ---------------- */
+details.tech{margin-top:12px; border:1px solid var(--border-default);
+  border-radius:var(--radius-md); background:var(--white); overflow:hidden}
+details.tech>summary{cursor:pointer; list-style:none; padding:12px 16px;
+  font:500 13px var(--font-body); color:var(--text-secondary);
+  display:flex; align-items:center; gap:8px;
+  transition:background var(--duration-fast) var(--ease-out)}
+details.tech>summary::-webkit-details-marker{display:none}
+details.tech>summary:hover{background:var(--mint-100)}
+details.tech>summary::before{content:"\25b8"; font-size:11px; color:var(--ink-300);
+  transition:transform var(--duration-fast) var(--ease-out)}
+details.tech[open]>summary::before{transform:rotate(90deg)}
+details.tech .body{padding:0 16px 16px; font-size:12.5px; line-height:1.55;
+  color:var(--text-secondary)}
+details.tech .body dl{margin:0; display:grid; grid-template-columns:auto 1fr;
+  gap:6px 14px}
+details.tech .body dt{font-weight:600; color:var(--text-body)}
+details.tech .body dd{margin:0}
+

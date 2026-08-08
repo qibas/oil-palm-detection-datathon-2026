@@ -1,0 +1,46 @@
+# SawitGuard-GNN — versi yang benar-benar dipakai saat seluruh angka dihasilkan.
+#
+#   pip install -r requirements.txt
+#
+# ------------------------------------------------------------------ TORCH
+# Baris torch di bawah adalah versi CPU. Untuk MELATIH (Lapisan 1 butuh GPU),
+# pasang varian CUDA lebih dulu:
+#
+#   pip install --index-url https://download.pytorch.org/whl/cu126 \
+#       "torch==2.13.0+cu126" "torchvision==0.28.0+cu126"
+#
+# HARUS cu126, BUKAN cu130. CUDA 13 membuang arsitektur Pascal (sm_61), dan GPU
+# yang dipakai untuk melatih paket ini adalah GTX 1060 = sm_61. Gejalanya jahat:
+# impor berhasil, torch.cuda.is_available() True, lalu gagal di kernel pertama.
+# `layer1_build/train_folds_gpu.py::preflight()` menjalankan satu matmul di GPU
+# justru untuk memicu galat itu di detik pertama.
+#
+# DEMO tidak butuh GPU sama sekali - deteksi satu citra < 1 detik di CPU.
+#
+# ------------------------------------------------------------------ NUMPY
+# numpy dipatok < 2 dengan sengaja. opencv 5.x menuntut numpy >= 2, tetapi
+# menaikkan numpy berisiko pada penjaga "bit-exact rebuild" di
+# layer2_real/test_dataset.py. Jalankan test_dataset.py setelah mengubah salah
+# satu dari keduanya.
+
+numpy==1.26.4
+pandas==2.2.3
+scipy==1.17.1
+scikit-learn==1.8.0
+matplotlib==3.10.8
+pillow==11.0.0
+
+# Lapisan 1 — deteksi & kesehatan tajuk
+torch==2.13.0
+torchvision==0.28.0
+ultralytics==8.4.116
+lightgbm==4.6.0
+opencv-python==5.0.0
+
+# Demo web (React di-vendor lokal di web/vendor/, tidak perlu npm)
+starlette==1.3.1
+uvicorn==0.52.1
+python-multipart==0.0.32
+
+# Demo Streamlit (cadangan; demo utama memakai demo_api.py)
+streamlit==1.61.1

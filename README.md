@@ -82,7 +82,10 @@ sendiri**. Itu disengaja.
 Tata letak paket ini **mencerminkan repo kerja**, jadi semua skrip jalan di tempat.
 
 ```bash
-pip install numpy pandas scipy scikit-learn torch lightgbm opencv-python ultralytics roboflow
+pip install -r requirements.txt        # versi yang dipakai saat angka dihasilkan
+# GPU untuk MELATIH: pasang torch cu126 lebih dulu (BUKAN cu130 - Pascal dibuang di CUDA 13)
+#   pip install --index-url https://download.pytorch.org/whl/cu126 "torch==2.13.0+cu126" "torchvision==0.28.0+cu126"
+# DEMO tidak butuh GPU.
 
 # 1. bekukan dataset bersih (asersi berhenti kalau ada angka meleset) — opsional, CSV sudah ada
 cd data_clean
@@ -94,6 +97,8 @@ cd ../layer1_build
 python exp_health.py                  # kesehatan tajuk, LightGBM, leave-one-ortho-out
 FOLDS=all python train_folds_gpu.py   # YOLOv12n, 3 lipatan x 30 epoch (y12.build otomatis)
 python centre_eval_folds.py           # METRIK UTAMA Tahap 1 + angka uji jembatan
+python unhealthy_threshold.py         # ambang kelas Unhealthy (hasil: TETAP 0,75)
+python detect_centres.py <citra>      # citra apa pun -> pusat tajuk + graf
 # jalur YOLO11 lama (yolo_prep.py / yolo_train.py) masih ada tapi DIGANTIKAN oleh y12.py
 
 # 3. Lapisan 2 — Eg9PP  (CPU; total ~24 mnt)
@@ -101,7 +106,51 @@ cd ../layer2_real
 python test_dataset.py         # ~90 asersi + 4 penjaga kebocoran  (~10 dtk)
 python run_real.py             # dekomposisi -> results_real.csv   (~22 mnt)
 python perm_null.py            # null permutasi                     (~45 dtk)
+
+# varian foto-tunggal (v3): buang waktu + genotipe, nilai DALAM-SENSUS
+python run_v3.py 20            # -> results_v3.csv                  (~12 mnt)
+python run_v3_perm.py 200 2    # null dalam-famili -> results_v3_perm_progeny.csv        (~28 mnt)
+STRATA=progeny_parcel python run_v3_perm.py 200 2   # strata terketat  (~28 mnt)
+RECALL=0.446 FPR=0.0094 python run_v3_noisy.py 10 20   # ongkos substitusi detektor (~6 mnt)
+python train_final_v3.py       # checkpoint 1-kolom untuk demo -> stgnn_v3_photo.pt
+# v3 MELANGGAR kontrak dengan sengaja (WINDOW=1, genotipe dibuang).
+# Alasan dan ongkos terukurnya: layer2_real/INTERFACE.md bagian akhir.
 ```
+
+
+## Demo web
+
+```bash
+python demo_api.py            # http://localhost:8000
+```
+
+React + Babel **di-vendor lokal** di `web/vendor/`, jadi demo berjalan tanpa internet
+dan tanpa `npm install`. Seluruh perhitungan ada di `demo_core.py`; `demo_api.py` cuma
+lapisan HTTP, dan `demo_app.py` (Streamlit) adalah cadangan yang memanggil core yang sama —
+keduanya tidak mungkin memberi angka berbeda.
+
+```bash
+python demo_core.py           # cetak semua angka layar + render gambar, TANPA server
+node web/check_jsx.js         # WAJIB setelah menyunting web/app.jsx
+```
+
+`check_jsx.js` memeriksa dua hal yang lolos dari pencocokan string: **sintaks JSX**
+(berkas rusak tetap dikirim server dengan status 200) dan **escape unicode yang bocor**
+(`\u2014` yang terlanjur jadi teks; pernah terjadi 23 kali sekaligus).
+
+Berkas yang WAJIB ada agar demo jalan — pastikan ikut ter-commit:
+
+| berkas | isi |
+|---|---|
+| `layer2_real/stgnn_v3_photo.pt` | checkpoint Lapisan 2 varian foto (54 KB) |
+| `layer2_real/risk_ranked.csv` | peringkat Eg9PP untuk layar Bukti |
+| `layer1_build/yolo12_runs/yolo12n_base_fold*/weights/best.pt` | bobot detektor |
+| `web/vendor/*.js` | React, ReactDOM, Babel (3,2 MB) |
+| `data_clean/*.csv` | dataset beku |
+
+`layer1_build/yolo12/` dan `layer1_build/anom_data/` **sengaja tidak dilacak** — keduanya
+direktori turunan yang dibangun ulang `y12.build()` dan `anom.build()` dalam hitungan detik,
+dan berkas lipatannya memuat path absolut mesin pembangunnya.
 
 Terverifikasi: `python layer2_real/test_dataset.py` dijalankan **dari dalam paket ini** dan lulus
 seluruh pemeriksaan (exit 0).

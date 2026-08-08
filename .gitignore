@@ -6,8 +6,7 @@ __pycache__/
 
 # Direktori data turunan - dibangun ulang dalam hitungan detik, jangan dilacak.
 #   layer1_build/yolo12*/  <- y12.build()      (hardlink ds_B + label YOLO)
-# CATATAN: layer1_build/ds_B/ dan layer1_build/anom_data/ SUDAH terlacak sejak
-# branch testing_stage1; menambahkannya di sini tidak akan melepaskannya.
+# CATATAN: layer1_build/ds_B/ adalah SUMBER (2.308 ubin), tetap dilacak.
 layer1_build/yolo12/
 layer1_build/yolo12_1c/
 
@@ -16,3 +15,12 @@ layer1_build/yolo12_1c/
 
 # Cadangan otomatis dari train_folds_gpu.py
 *.bak-*.json
+
+# Direktori data turunan Peru - dibangun ulang `anom.build(k=5, seed=42)` dengan
+# lipatan IDENTIK (fold0 val = 86 citra, cocok dengan stage1_summary.json).
+#
+# WAJIB diabaikan, bukan sekadar boleh: fold*.yaml dan fold*_*.txt memuat PATH
+# ABSOLUT mesin pembangunnya. Versi lama menunjuk mesin lain dan tak bisa dipakai
+# siapa pun; kalau di-commit sekarang ia menunjuk mesin ini dan mengulang
+# persoalan yang sama untuk orang berikutnya.
+layer1_build/anom_data/
