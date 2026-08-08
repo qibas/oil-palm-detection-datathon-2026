@@ -715,9 +715,15 @@ membandingkan Bab 3 dengan Bab 4 akan menemukannya. Dua wujudnya:
    Tahap 4**, sehingga kerapatan graf "terukur dari data". Namun `layer2_real/INTERFACE.md`
    menetapkan `adjacency()` dibangun dari `layer2_edges.csv` — geometri **Eg9PP**, bukan
    geometri Roboflow — dan `DATASET_CARD.md` menyatakan kedua dataset tidak digabungkan.
-   Simulator di akar repositori pun berjalan di atas kisi heksagonalnya sendiri (1.600 pohon),
-   bukan di atas awan titik Lapisan 1. Naskah karena itu menjanjikan sambungan yang tidak
-   dieksekusi.
+   Simulator di akar repositori pun berjalan di atas kisinya sendiri (1.600 pohon), bukan di
+   atas awan titik Lapisan 1. Naskah karena itu menjanjikan sambungan yang tidak dieksekusi.
+   **Koreksi 2026-08-08:** kisi itu **persegi**, bukan heksagonal — `config.GEOMETRY = "square"`,
+   derajat akar rata-rata **7,70**. Seluruh hasil Lapisan 2 yang terbit dihasilkan di atas kisi
+   persegi tersebut. Kebun nyata justru **segitiga**: menyuntikkan 5.077 koordinat tajuk nyata
+   ke simulator memberi derajat **5,39–5,52** (lawan 5,80 kisi segitiga sintetis dan 7,70
+   persegi), yaitu kisi persegi **melebihkan konektivitas ~42%**. Ini **menguatkan** temuan
+   negatif Lapisan 2, bukan melemahkannya: struktur graf gagal menolong justru pada regime yang
+   paling menguntungkannya. Lihat `real_geometry.py` dan `REAL_GEOMETRY.md`.
    **Tindakan:** ganti bingkai "satu pipeline enam tahap" dengan bingkai **tiga sumber bukti +
    uji antarmuka** (§3.1 dan §3.6). Ini tidak melemahkan paper — ia menukar satu klaim yang
    tidak dapat dipertahankan dengan satu hasil terukur (5,74 vs 5,62), dan ia menyelamatkan

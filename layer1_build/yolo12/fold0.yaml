@@ -1,0 +1,6 @@
+path: C:\Users\Brian\Desktop\Project\Datathon 2026\AI CONCEPT PAPER\polished AI_concept paper\layer1_build\yolo12
+train: fold0_train.txt
+val: fold0_val.txt
+names:
+  0: Healthy
+  1: Unhealthy
