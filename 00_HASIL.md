@@ -3,6 +3,14 @@
 Satu berkas. Apa yang dibangun, apa yang dijalankan, apa hasilnya.
 **Cakupan: data nyata saja.** Simulator SEIR sintetis dikeluarkan dari paper ini.
 
+> **Sebelum mengutip angka apa pun ke naskah, buka [`00_ANGKA_FINAL.md`](00_ANGKA_FINAL.md).**
+> Paket ini memuat angka dari sembilan konfigurasi berbeda — model penuh dan varian
+> foto, AP gabungan dan AP dalam-sensus, 1/2/3/6/24 kolom, dua nilai window, empat
+> horizon. Beberapa pasang **tidak sebanding**, dan berkas itu menandai persis mana
+> yang masuk paper sebagai angka utama dan mana yang tidak boleh diadu. Ia dihasilkan
+> `make_final_table.py` dari `00_RINGKASAN.csv`, jadi ia mustahil melenceng dari
+> sumbernya.
+
 ---
 
 # BAGIAN 1 — PIPELINE
@@ -130,6 +138,34 @@ STRUKTUR    = true    − random     nilai peta kontak yang BENAR
 
 **Bacaannya:** deteksi **pusat** tajuk sawit dari UAV berhasil meyakinkan (F1 0,960); penilaian kesehatan jauh di atas acak. Jarak antara F1 pusat 0,960 dan mAP50 0,687 bukan cacat model — kotak kebenaran-dasarnya cap berukuran tetap, sehingga mAP punya langit-langit yang tidak bergantung model. Yang dikonsumsi Lapisan 2 adalah koordinat, bukan kotak. Tapi sisi kesehatan seluruhnya tetap bersandar pada **66 pohon sakit unik**.
 
+### Uji jembatan — apakah antarmuka kedua lapisan cocok?
+
+Kedua lapisan **tidak digabung** dan tidak bisa digabung: kebun berbeda, zaman berbeda,
+tanpa kunci join. Yang bisa diuji adalah apakah *keluaran* Lapisan 1 berbentuk sama dengan
+*masukan* yang diharapkan Lapisan 2. Satu besaran memutuskan itu — **derajat rata-rata graf
+kontak pada r = 1,5 × jarak tanam, pohon bagian dalam saja**. Kalau kedua lapisan
+menghasilkan angka yang berbeda jauh, geometri yang dilatih Lapisan 2 tidak akan pernah
+muncul dari foto.
+
+| Sumber | Derajat @ r = 1,5 × jarak tanam |
+|---|---|
+| Lapisan 1, dari **prediksi detektor** | **5,54 ± 0,12** |
+| Lapisan 1, dari kotak ground-truth | 5,62 ± 0,05 |
+| Lapisan 2, Eg9PP | **5,74** |
+
+Ongkos memakai detektor alih-alih label sempurna adalah **−1,4%** (5,54 lawan 5,62) —
+kecil, dan itulah inti ujinya: geometri kebun bisa direkonstruksi dari *keluaran model*,
+bukan hanya dari anotasi manusia.
+
+**Kalimat yang sah:** kedua lapisan **berselisih 3,5%**. Bukan "keduanya sama" — 5,74
+berada **di luar** pita ±0,12, jadi selisihnya nyata meski kecil. Kenapa bukan nol:
+kisi Eg9PP adalah petak percobaan yang ditanam rapi, sedangkan ds_B kebun produksi
+dengan pohon hilang dan sulaman.
+
+Hanya "pohon bagian dalam" yang dihitung. Pohon di tepi ubin kehilangan tetangga yang
+terpotong bingkai citra, dan memasukkannya akan menyeret derajat ke bawah karena alasan
+yang tidak ada hubungannya dengan jarak tanam.
+
 ## 2.2 Lapisan 2 — Eg9PP, lapangan nyata 25 tahun
 
 ### Dekomposisi, seluruh horizon
@@ -247,7 +283,12 @@ sah adalah "tidak lebih lemah", **bukan** "lebih unggul".
 
 ### Uji permutasi dalam-famili untuk v3 (200 permutasi per strata)
 
-v3 membuang genotipe, yang **melanggar larangan #5**. Kontaminasi famili karena itu wajib
+v3 membuang genotipe, yang **melanggar larangan #5 `layer2_real/INTERFACE.md`**
+("genotipe wajib menjadi kovariat di SEMUA model"). ⚠ Perhatikan penomorannya: paket ini
+punya **dua** daftar enam larangan yang berbeda — daftar `README.md` untuk seluruh paket,
+dan daftar `INTERFACE.md` khusus Lapisan 2. Yang dilanggar v3 adalah **#5 milik
+`INTERFACE.md`**; #5 milik `README.md` (pohon tersensor bukan negatif) tetap **utuh dan
+dipatuhi**. Kontaminasi famili karena itu wajib
 diukur, bukan diasumsikan. Lintasan per-pohon ditukar hanya antar pohon sefamili; kisi tidak
 pernah bergerak, sehingga komposisi famili tiap ketetanggaan dipertahankan dan hanya susunan
 spasial halus yang dihancurkan.
@@ -274,8 +315,9 @@ Rasio graf-benar terhadap tanpa-skill dalam-sensus adalah **1,61×**, sementara 
 Mantel-Haenszel di §2.2 adalah **1,65×**. Dua metode yang sama sekali berbeda — GNN dan
 epidemiologi klasik — mendarat di besaran yang sama.
 
-Pencabutan larangan #5 **hanya berlaku untuk v3**, karena hanya v3 yang punya null yang
-menguantifikasi kontaminasinya. Rinciannya di `layer2_real/INTERFACE.md`.
+Pencabutan larangan #5 `INTERFACE.md` **hanya berlaku untuk v3**, karena hanya v3 yang
+punya null yang menguantifikasi kontaminasinya. Untuk `run_real.py` dan `run_v2.py`
+larangan itu **tetap mengikat penuh**. Rinciannya di `layer2_real/INTERFACE.md`.
 
 ### Ongkos ujung-ke-ujung: apa yang hilang saat masukan datang dari detektor
 
@@ -410,6 +452,52 @@ Ikut terkoreksi satu tafsir kami sendiri: "detektor hanya menemukan 0–1 gejala
 bukan kegagalan. Ubin 1024² memuat ~65 sawit; pada laju Unhealthy 1,3% ia **diharapkan**
 memuat ~0,85 pohon sakit. Yang terlihat adalah laju dasar, bukan detektor yang lumpuh.
 
+## 2.6 Jalur bukti ketiga — Peru (PalmAnom / PalmSan)
+
+⚠ **Baca batasnya lebih dulu: 1 lipatan, 1 seed, 86 citra validasi.** Tidak ada mean ± std,
+sehingga aturan putusan `paired()` yang dipakai di seluruh paket ini **tidak berlaku** untuk
+angka di bawah. Ia **tidak boleh** diadu dengan F1 pusat 0,960 ± 0,024 milik ds_B, dan tidak
+boleh disajikan sebagai replikasi. Yang sah dibaca darinya hanya satu hal kualitatif:
+detektor tajuk yang sama bekerja di **kebun, sensor dan negara yang berbeda**.
+
+Sumber: Mendeley `10.17632/nh7d23dgnw.1`, lisensi CC BY 4.0. Kode: `layer1_build/anom.py`;
+angka mentah: `layer1_build/stage1_summary.json`. **Tidak pernah digabung dengan ds_B**,
+persis seperti Lapisan 1 tidak pernah digabung dengan Lapisan 2.
+
+| | Nilai |
+|---|---|
+| mAP50 gabungan | 0,9495 |
+| PalmAnom AP50 · PalmSan AP50 | 0,9493 · 0,9497 |
+| mAP50-95 | 0,7032 |
+
+Dua kelas anomali mendarat **nyaris identik** (selisih 0,0004), jadi tidak ada satu kelas
+yang menopang angka gabungan sendirian.
+
+### Dua hal yang harus ikut dinyatakan
+
+**① Menambahkan konteks di sekitar tajuk justru MERUGIKAN.** Tiga kontrol dilatih pada
+potongan citra yang berbeda:
+
+| Kontrol | ROC-AUC | PR-AUC |
+|---|---|---|
+| `crown` — tajuk saja | **0,9524** | **0,9469** |
+| `context` — konteks saja | 0,9198 | 0,8607 |
+| `full` — tajuk + konteks | **0,8802** | 0,8478 |
+
+Memberi model **kedua-duanya lebih buruk** daripada memberi tajuk saja (0,880 lawan 0,952).
+Piksel di sekitar tajuk bukan cuma tidak menambah informasi — ia mengencerkannya. Arahnya
+sejajar dengan temuan ④ di Lapisan 2: memperluas jangkauan masukan tidak menolong.
+
+**② Detektornya lebih-prediksi 36%.** 1,72 kotak per citra lawan 1,267 pada ground truth;
+**28 dari 86** citra memuat prediksi lebih banyak daripada kebenarannya. mAP50 0,95 dengan
+demikian **tidak** berarti pencacahan pohonnya tepat — dan pencacahan justru yang dibutuhkan
+untuk membangun graf. Inilah alasan angka Peru tidak boleh memberi rasa aman lebih dari yang
+pantas.
+
+**Kenapa ini tetap dilaporkan meski lemah.** Menyimpannya di luar dokumen sama saja memilih
+angka yang enak dilihat; nilai kerja paket ini justru kebalikannya. Batasnya dinyatakan di
+depan, bukan di catatan kaki.
+
 ---
 
 # BAGIAN 3 — APA ARTINYA
@@ -428,6 +516,28 @@ RR gabungan 4,47× **runtuh jadi 1,65×** setelah stratifikasi Mantel-Haenszel p
 
 **④ Enam tetangga langsung sudah memuat seluruh sinyal yang bisa ditangkap.**
 Empat upaya menaikkan mutu model — umur inokulum, difusi 2-hop, radius lebih besar, jendela lebih panjang — **semuanya gagal**, dua di antaranya NEG. Satu di antaranya (jendela panjang) sempat tampak seperti kenaikan +0,004 sampai himpunan contohnya disamakan, lalu jatuh ke nol. Model ini sudah menyentuh langit-langit informasi yang tersedia di data tanpa citra.
+
+**⑤ Riwayat waktu ternyata TIDAK dibutuhkan — dan itu yang membuat jalur foto mungkin.**
+Ini temuan paling berkonsekuensi di paket ini, karena ia satu-satunya yang mengubah apa yang
+bisa dibangun. Tiga langkahnya:
+
+**(a) Metriknya harus diperbaiki dulu.** AP gabungan memberi nilai pada kemampuan menebak
+*sensus mana ini* — nol guna untuk memeringkat pohon di dalam satu bidikan, yang persis
+tugas dari satu foto drone. Dinilai **dalam-sensus**, model penuh kehilangan **47%**
+nilainya (0,1818 → 0,0973). Separuh angka gabungan itu adalah model menebak tanggal.
+
+**(b) Pada tugas yang sebenarnya, model foto MENYAMAI model penuh.** Buang riwayat waktu
+dan genotipe, sisakan kondisi tetangga lewat graf — persis yang bisa diberikan satu foto —
+dan selisihnya **+0,0042 ± 0,0035 (36/40)**. Lolos ambang, tetapi hanya 1,2 std: klaim
+yang sah adalah **"tidak lebih lemah"**, bukan "lebih unggul".
+
+**(c) 77% kemampuannya datang khusus dari peta kontak yang BENAR** (+0,0296, **40/40**).
+Tanpa graf, v3 mendarat di 0,0468 melawan laju dasar 0,0468 — **persis nol**, karena blok
+STATE terbukti konstan 0 di risk set. Seluruh kemampuannya memang datang dari graf.
+
+Ongkosnya diukur, bukan diasumsikan, di dua tempat: kontaminasi kekerabatan **36%**
+(0/200 permutasi dalam-famili+petak, sisanya 64% spasial), dan substitusi detektor memakan
+41% sehingga **59% sinyal bertahan** sampai ujung (lift 1,45× → 1,27×).
 
 **Dan satu yang harus dinyatakan, bukan disembunyikan:** temporal dan prevalensi **INCONCLUSIVE di hampir semua horizon**. Itu bukan berarti waktu tidak penting — itu berarti **Eg9PP tak punya citra**, sehingga riwayat pohon itu sendiri selagi asimptomatik terbukti **persis nol**. Lengan temporal memang tak punya apa pun untuk dibawa. Dekomposisi ini menanyakan tiga pertanyaan, tapi hanya satu lengan yang benar-benar terisi.
 
@@ -448,6 +558,8 @@ Empat upaya menaikkan mutu model — umur inokulum, difusi 2-hop, radius lebih b
 | Varian v3 tanpa genotipe | **36% kekerabatan** | efek graf v3 mengandung 36% kontaminasi famili (null dalam-famili+petak, 200 permutasi). Angka mentahnya **tidak boleh** dikutip seolah seluruhnya penularan; 64% yang tersisa adalah spasial |
 | ~~Masukan v3 dari citra belum diuji~~ | **DIUKUR: −41%** | Disimulasikan pada laju detektor ds_B (recall 0,446 · fpr 0,0094): AP dalam-sensus 0,0916 → **0,0800**, lift 1,45× → **1,27×**, **59% sinyal bertahan**. Yang tersisa sebagai batas: laju itu diukur di ds_B, kebun yang **berbeda** dari Eg9PP, jadi ini simulasi ongkos — bukan pengukuran lapangan di kebun tujuan |
 | Positif Unhealthy terlalu sedikit untuk menyetel ambang | **66 pohon unik** | Ambang kelas Unhealthy dipilih silang-lipatan justru **lebih buruk** (F1 0,370) daripada memakai 0,75 apa adanya (0,406); optimum per lipatan melompat 0,85/0,55/0,85 karena letaknya derau. Ambang tetap 0,75 |
+| Peru (PalmAnom/PalmSan) | **1 lipatan, 1 seed** | mAP50 0,9495 tanpa std ⇒ `paired()` tak berlaku, **bukan** replikasi dan **tidak sebanding** dengan ds_B. Detektornya juga **lebih-prediksi 36%** (1,72 vs 1,267 kotak/citra), jadi mAP tinggi ≠ pencacahan tepat. Lihat §2.6 |
+| Checkpoint demo `stgnn_v3_photo.pt` | **tanpa held-out** | Dilatih pada seluruh data untuk keperluan tampilan; **tidak ada satu pun angka performa yang boleh dikutip darinya**. Angka jalur foto yang sah adalah 1,45× (masukan bersih) dan 1,27× (lewat detektor), keduanya dari `run_v3_cols.py`/`run_v3_noisy.py` yang block-CV. Skornya juga **logit mentah, bukan peluang** — lihat baris kalibrasi |
 | ~~Uji jembatan pakai kotak ground-truth~~ | **DITUTUP** | Kini diukur dari **prediksi detektor**, bukan kotak GT: derajat pohon-dalam **5,54 ± 0,12** lawan 5,62 ± 0,05 pada kotak GT (−1,4%). Terhadap 5,74 Eg9PP selisihnya **3,5%** — dan 5,74 berada **di luar** pita ±0,12, jadi kalimatnya "berselisih 3,5%", **bukan** "keduanya sama" |
 
 ## Satu klaim yang kami tarik sendiri
@@ -460,7 +572,10 @@ Laporan sebelumnya menyebut satu ortomosaik "kolaps" ke PR-AUC 0,030 sebagai buk
 
 | Ingin lihat | Buka |
 |---|---|
-| ringkasan semua angka | `00_RINGKASAN.csv` |
+| **angka mana yang masuk paper, dan mana yang tak boleh diadu** | **[`00_ANGKA_FINAL.md`](00_ANGKA_FINAL.md)** · dihasilkan `make_final_table.py`, **jangan sunting tangan** |
+| ringkasan semua angka | `00_RINGKASAN.csv` (98 baris) |
+| jalur bukti ketiga (Peru) | `layer1_build/stage1_summary.json` · kode: `layer1_build/anom.py` |
+| apa yang dijalankan demo, dan apa yang tidak boleh dikutip darinya | `DEMO_BRIEF.md` · checkpoint: `layer2_real/stgnn_v3_photo.pt` (dilatih `train_final_v3.py`) |
 | tangga lokalitas + ablasi fitur | `layer2_real/results_v2.csv` · kode: `run_v2.py`, `dataset_v2.py`, `sweep_v2.py` |
 | varian foto-tunggal (v3) | `layer2_real/results_v3.csv` · kode: `dataset_v3.py`, `run_v3.py` |
 | null dalam-famili untuk v3 | `layer2_real/results_v3_perm_progeny.csv` · `results_v3_perm_progeny_parcel.csv` · kode: `run_v3_perm.py` |

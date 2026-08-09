@@ -98,6 +98,40 @@ code,.mono{font-family:var(--font-mono)}
   background:var(--lime-500); display:grid; place-items:center; margin:0 auto 14px}
 .drop .big{font:500 var(--text-md) var(--font-display)}
 
+/* ---------------- dialog syarat foto ----------------
+   Menggantikan daftar syarat yang dulu dicetak di layar Unggah. Syarat di muka
+   adalah ceramah; pemeriksaan sesudah unggah adalah tanggapan. Dialog ini hanya
+   muncul kalau ada butir yang tidak lolos. */
+.modal-bg{position:fixed; inset:0; z-index:50; background:rgba(26,28,23,.42);
+  display:grid; place-items:center; padding:24px;
+  animation:fade var(--duration-base) var(--ease-out)}
+.modal{background:var(--white); border-radius:var(--radius-xl); width:min(480px,100%);
+  max-height:82vh; overflow:auto; box-shadow:0 24px 64px rgba(26,28,23,.24)}
+.modal-h{display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+  padding:20px 22px 14px; border-bottom:1px solid var(--ink-200)}
+.modal-x{border:none; background:transparent; cursor:pointer; font-size:15px; padding:2px 6px;
+  color:var(--text-muted); border-radius:var(--radius-pill); line-height:1}
+.modal-x:hover{background:var(--mint-100); color:var(--ink-900)}
+.modal-r{padding:14px 22px; border-bottom:1px solid var(--ink-200)}
+.modal-rh{display:flex; justify-content:space-between; align-items:center; gap:10px;
+  margin-bottom:4px}
+.modal-rh b{font:600 14px var(--font-body)}
+.modal-s{margin-top:8px; padding:9px 12px; background:var(--mint-100);
+  border-radius:var(--radius-md); font:400 12px/1.55 var(--font-body);
+  color:var(--text-secondary)}
+.modal-f{padding:14px 22px; display:flex; justify-content:flex-end}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* ---------------- Ya / Tidak, menggantikan 0 / 1 di tabel ---------------- */
+.yn{display:inline-flex; align-items:center; gap:5px; border-radius:var(--radius-pill);
+  padding:3px 11px; font:600 12px var(--font-body)}
+.yn-ya{background:#FDECEA; color:#8E1F23}
+.yn-no{background:var(--mint-100); color:var(--text-muted)}
+.yn i{font-style:normal; font-weight:500; opacity:.75}
+/* label kecil di samping persentil ("teratas") - tidak boleh seberat angkanya */
+.tt{font-style:normal; font-family:var(--font-body); font-weight:400; font-size:11px;
+  color:var(--text-muted)}
+
 /* ---------------- sample cards (mockup: 130px, radius 20, pil caption) -------- */
 .samp{border-radius:20px; overflow:hidden; position:relative; cursor:pointer;
   transition:all var(--duration-fast) var(--ease-out); outline:3px solid transparent;

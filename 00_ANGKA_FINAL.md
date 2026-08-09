@@ -25,6 +25,7 @@ tanpa menyebut perbedaannya.
 | F1 pusat tajuk | 0,960 ± 0,024 | Lapisan 1 | — | — | — | F1 pusat | **UTAMA** | ya |
 | derajat jembatan | 5,54 ± 0,12 vs 5,74 | Lapisan 1 vs 2 | — | — | — | derajat @1,5× | **UTAMA** | ya |
 | agregasi blok | lift 1,24× < pohon 1,61× | Eg9PP | 6 | 1 | 3 | tangkapan top5 | **UTAMA (negatif)** | tidak |
+| mAP50 Peru (PalmAnom/PalmSan) | 0,9495 | Peru | — | — | — | mAP50 | pendukung — **1 lipatan** | tidak |
 | keluaran demo apa pun | — | foto | 1 | 1 | 3 | — | **JANGAN DIKUTIP** | ya |
 
 **Yang harus dinyatakan di paper:** angka utama struktur (+0,0151 dan +0,0296) 
@@ -43,6 +44,23 @@ sambil menunjuk layar demo adalah salah kutip.
 | derajat @1.5x L1 (prediksi detektor) | **5,54 ± 0,12** | pohon bagian dalam, r = 1,5 × jarak tanam | satu sama lain saja |
 | derajat @1.5x L1 (kotak GT) | **5,62 ± 0,05** | pohon bagian dalam, r = 1,5 × jarak tanam | satu sama lain saja |
 | derajat @1.5x L2 | **5,74** | pohon bagian dalam, r = 1,5 × jarak tanam | satu sama lain saja |
+
+### A2 · Jalur bukti ketiga — Peru (PalmAnom / PalmSan)
+
+**1 lipatan, 1 seed, 86 citra validasi.** Tidak ada mean ± std, sehingga `paired()` tidak berlaku dan angka ini **tidak boleh** diadu dengan F1 pusat 0,960 ± 0,024 milik ds_B. Ia dilaporkan sebagai dukungan kualitatif — detektor tajuk bekerja di kebun, sensor dan negara yang berbeda — bukan sebagai hasil terukur. Sumber: `layer1_build/stage1_summary.json`.
+
+| Angka | Nilai | Sebanding dengan |
+|---|---|---|
+| mAP50 gabungan | **0,9495** | hanya angka Peru lain |
+| PalmAnom AP50 | **0,9493** | PalmSan AP50 |
+| PalmSan AP50 | **0,9497** | PalmAnom AP50 |
+| mAP50-95 gabungan | **0,7032** | hanya angka Peru lain |
+| kontrol crown ROC-AUC | **0,9524** | dua kontrol Peru lainnya |
+| kontrol context ROC-AUC | **0,9198** | dua kontrol Peru lainnya |
+| kontrol full ROC-AUC | **0,8802** | dua kontrol Peru lainnya |
+| kotak diprediksi per citra | **1,7209** | GT 1,267 per citra |
+
+Dua hal yang harus ikut dinyatakan bila angka ini dipakai. Pertama, kontrol **full (tajuk + konteks) justru LEBIH BURUK** daripada tajuk saja (ROC-AUC 0,880 lawan 0,952) — konteks di sekitar tajuk tidak menambah informasi, ia mengencerkannya. Kedua, detektornya **lebih-prediksi 36%** (1,72 kotak per citra lawan 1,27 pada ground truth; 28 dari 86 citra melebihi GT), jadi mAP50 0,95 tidak berarti pencacahan pohonnya tepat.
 
 ## B · Eg9PP, model PENUH — 24 kolom, W=3, **AP gabungan**
 
@@ -117,6 +135,7 @@ Keluaran operasional yang benar tetap daftar prioritas per-pohon.
 | **+0,0151** (B, h=3) ↔ **+0,0296** (C) | idem — keduanya disebut "STRUKTUR" tetapi diukur pada dua skala yang berbeda |
 | **1,45×** (C, 1 kolom) ↔ **1,61×** (C, 6 kolom) | sebanding, TAPI hanya 6 kolom yang butuh dua kunjungan; 1 kolom yang bisa diberi satu foto |
 | **0,960** F1 pusat (A) ↔ **0,687** mAP50 (A) | mAP berlangit-langit label; keduanya sah dilaporkan, tidak sah diadu |
+| **0,9495** mAP50 Peru (A2) ↔ **0,687** mAP50 ds_B (A) | dataset, kebun, sensor dan negara berbeda; Peru **1 lipatan tanpa std**, ds_B 3 lipatan. Peru juga berlabel anomali tajuk, bukan kesehatan |
 | angka mana pun ↔ keluaran demo | checkpoint demo dilatih tanpa held-out; **tidak ada** angka performa yang boleh dikutip darinya |
 
 ## F · Yang masuk paper

@@ -129,6 +129,15 @@ async def api_analyze(request):
         t = res["tabel"]
         _lo = float(t.skor.min())
         _rng = max(1e-9, float(t.skor.max()) - _lo)
+
+        # Persentil "berada di X% teratas", dihitung dari SKOR dan bukan dari
+        # peringkat. Bedanya penting di sini: jalur foto menghasilkan banyak skor
+        # kembar, dan peringkat di antara yang kembar itu sewenang-wenang. Berbasis
+        # skor, seluruh pohon yang seri mendapat persentil yang sama - yang memang
+        # kebenarannya, dan sekaligus menghapus kesan presisi yang tidak dimiliki.
+        _sk = t.skor.values
+        _n = max(1, len(_sk))
+        _pct = {float(s): round(100.0 * float((_sk >= s).sum()) / _n, 1) for s in _sk}
         return {
             "degenerate": bool(res["degenerate"]),
             "n_risk": int(res["n_risk"]), "n_sumber": int(res["n_sumber"]),
@@ -145,6 +154,7 @@ async def api_analyze(request):
                        for r in t.itertuples()],
             "sources": [{"x": nx(p[0]), "y": ny(p[1])} for p in res.get("sumber_xy", [])],
             "top10": [{"rank": int(r.peringkat), "skor": round(float(r.skor), 4),
+                       "pct": _pct[float(r.skor)],
                        "nb": int(r.tetangga), "nb_sick": int(r.tetangga_sakit),
                        "q": int(r.kuintil)} for r in t.head(10).itertuples()],
             "nb_sick_top5": float(t.head(5).tetangga_sakit.mean()),
@@ -178,6 +188,7 @@ async def api_analyze(request):
                            sakit_xy=[[nx(a), ny(b)] for a, b in k["sakit_xy"]])
                       for k in f["fokus"]]))(core.outbreak_foci(df, info)),
         "readiness": core.readiness(info),
+        "checks": core.photo_checks(info),
     })
 
 

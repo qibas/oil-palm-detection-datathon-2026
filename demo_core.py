@@ -127,10 +127,21 @@ def readiness(info):
         {"bahan": "Daftar pohon + posisinya", "ada": n > 0,
          "punyamu": "%d pohon terdeteksi" % n if n else "belum ada citra diproses",
          "cara": "otomatis dari foto drone"},
-        {"bahan": "Peta kontak antar-pohon", "ada": ok_graph,
-         "punyamu": ("derajat %.2f, %d pohon bagian dalam"
-                     % (info["deg_inner"], info["n_inner"])) if ok_graph
-                    else "skala citra di luar jangkauan, graf tidak dibangun",
+        # CATATAN: grafnya SELALU dibangun begitu ada >= 20 pohon (`ok_n`), karena
+        # radiusnya diturunkan dari jarak tanam yang TERUKUR di citra itu sendiri -
+        # jadi ia menyesuaikan diri terhadap skala. Yang dijaga `ok_scale` adalah
+        # apakah DETEKTOR masih berada di dalam distribusi latihnya, bukan apakah
+        # grafnya benar. Pesan lama ("graf tidak dibangun") keliru di dua sisi
+        # sekaligus: grafnya dibangun, dan yang berisiko bukan grafnya.
+        {"bahan": "Peta kontak antar-pohon",
+         "ada": bool(info and info.get("ok_n")),
+         "punyamu": ("derajat %.2f, %d pohon bagian dalam%s"
+                     % (info["deg_inner"], info["n_inner"],
+                        "" if ok_graph else
+                        " — TAPI skala citra di luar jangkauan latih detektor,"
+                        " jadi daftar pohonnya yang belum tentu lengkap"))
+                    if (info and info.get("ok_n"))
+                    else "kurang dari 20 pohon terdeteksi, jarak tanam tak terukur",
          "cara": "otomatis dari foto drone"},
         {"bahan": "Tajuk bergejala sebagai sumber", "ada": n_sick > 0,
          "punyamu": ("%d tajuk terdeteksi tidak sehat" % n_sick if n_sick
@@ -140,6 +151,81 @@ def readiness(info):
          "punyamu": "belum ada — TIDAK dibutuhkan untuk peringkat dalam satu bidikan",
          "cara": "hanya perlu kalau ingin lintasan 25 tahun seperti Eg9PP"},
     ]
+
+
+def photo_checks(info):
+    """Pemeriksaan syarat foto, DIHITUNG dari citra yang barusan diproses.
+
+    MENGAPA INI BUKAN DAFTAR SYARAT DI LAYAR UNGGAH.
+
+    Syarat yang ditulis di muka adalah ceramah: pengguna belum punya konteks untuk
+    menilainya, dan empat kartu teks membuat layar pertama terasa seperti formulir.
+    Yang berguna adalah pemeriksaan SESUDAH unggah, dengan angka dari fotonya
+    sendiri, dan hanya muncul kalau ada yang tidak lolos.
+
+    Tiap butir memuat `saran` yang bisa langsung dikerjakan - termasuk faktor
+    perbesaran yang sudah dihitung, bukan "sesuaikan skala".
+
+    `syarat_foto` memisahkan dua hal yang mudah tertukar. Jumlah sawit dan skala
+    adalah SYARAT: fotonya memang belum bisa dibaca dengan benar. Ketiadaan tajuk
+    bergejala BUKAN syarat - itu petak yang sehat, dan pada laju Unhealthy 1,3%
+    sebuah ubin 1024 memang diharapkan hanya memuat ~0,85 pohon sakit. Memunculkan
+    dialog peringatan untuk itu akan menuduh mayoritas foto normal sebagai cacat.
+
+    -> list of dict. Dialog hanya ditampilkan bila ada butir `syarat_foto=True`
+       yang `ok=False`; butir informatif ikut ditampilkan kalau dialognya terlanjur
+       terbuka, tetapi tidak pernah memicunya sendiri.
+    """
+    import numpy as _np
+
+    import detect_centres as dc
+
+    n = int(info.get("n", 0)) if info else 0
+    ok_n = bool(info and info.get("ok_n"))
+    sp = info.get("spacing_px") if info else None
+    ratio = info.get("scale_ratio") if info else None
+    target = float(_np.mean(dc.SPACING_REF))
+    lo, hi = dc.SCALE_WINDOW[0] * target, dc.SCALE_WINDOW[1] * target
+
+    out = [{
+        "judul": "Jumlah sawit",
+        "syarat_foto": True,
+        "ok": ok_n,
+        "punyamu": "%d sawit terdeteksi" % n,
+        "syarat": "minimal %d" % dc.MIN_TREES_FOR_SPACING,
+        "saran": ("Pakai potongan foto yang lebih luas. Satu potongan sekitar "
+                  "1.000 × 1.000 piksel biasanya memuat ~65 sawit."),
+    }]
+
+    if ok_n and sp and _np.isfinite(sp):
+        ok_s = bool(info.get("ok_scale"))
+        f = target / float(sp)
+        saran = ("Ubah ukuran foto: %s sekitar %.1f×."
+                 % (("perbesar", f) if f > 1 else ("perkecil", 1.0 / f)))
+        out.append({
+            "judul": "Skala foto",
+            "syarat_foto": True,
+            "ok": ok_s,
+            "punyamu": "jarak antar sawit %.0f piksel (%.2f× acuan)" % (sp, ratio),
+            "syarat": "%.0f–%.0f piksel" % (lo, hi),
+            "saran": saran + (" Di luar rentang ini detektor bekerja di luar kondisi "
+                              "latihnya, jadi sebagian sawit bisa terlewat."),
+        })
+
+    n_s = int(info.get("n_sympt", 0)) if info else 0
+    out.append({
+        "judul": "Sawit bergejala",
+        "syarat_foto": False,          # informatif; tidak pernah memicu dialog
+        "ok": n_s > 0,
+        "punyamu": "%d tajuk tidak sehat" % n_s,
+        "syarat": "minimal 1",
+        # Ini BUKAN foto yang buruk - ini laju dasar. Ubin 1024 memuat ~65 sawit;
+        # pada laju Unhealthy 1,3% ia memang diharapkan memuat ~0,85 pohon sakit.
+        "saran": ("Bukan galat: petak yang sehat memang begitu. Tanpa sawit sakit "
+                  "tidak ada sumber penularan, jadi seluruh sawit mendapat peringkat "
+                  "yang sama dan daftar prioritas tidak ditampilkan."),
+    })
+    return out
 
 
 def load_risk():
@@ -502,8 +588,13 @@ def eg9pp_payload():
         "status_out": s["status_out"],
         "sick_rate": float(df.status.isin(["S", "D"]).mean()),
         "levels": [{"nb": int(k), "n": int(v)} for k, v in vc.items()],
+        # `pct` = "berada di X% teratas". Dihitung dari peringkat, bukan dari logit:
+        # skala logit dua model berbeda tidak sebanding, sedangkan persentil bermakna
+        # sama di mana pun. Layar hanya menampilkan `pct`; `skor` tetap dikirim untuk
+        # pembaca teknis di balik expander.
         "top10": [{"rank": int(r.rank), "id": r.palm_id, "parcel": r.parcel,
                    "skor": round(float(r.logit), 4),
+                   "pct": round(100.0 * int(r.rank) / max(1, s["n_risk"]), 1),
                    "nb_sick": int(r.n_sick_neighbours),
                    "nb": int(r.n_neighbours)} for r in s["top10"].itertuples()],
         "nb_top10": s["sick_nb_top10"], "nb_all": s["sick_nb_all"],

@@ -70,6 +70,17 @@ L1 UAV,ambang kelas Unhealthy,F1 ambang dipilih silang-lipatan,0.370,0.052,3.0,,
 L1 UAV,ambang kelas Unhealthy,F1 ambang 0.75 apa adanya,0.406,0.058,3.0,,,dipertahankan; optimum per lipatan melompat 0.85/0.55/0.85 = derau
 L1 UAV,ambang kelas Unhealthy,recall detektor @0.75,0.446,,3.0,,,dipakai run_v3_noisy.py
 L1 UAV,ambang kelas Unhealthy,fpr detektor @0.75,0.0094,,3.0,,,idem
+L1 Peru,jalur bukti ketiga,PalmAnom AP50,0.9493,,1.0,,,"1 LIPATAN 1 SEED - TIDAK sebanding dgn ds_B yang 3 lipatan +/- std"
+L1 Peru,jalur bukti ketiga,PalmSan AP50,0.9497,,1.0,,,"1 LIPATAN 1 SEED - TIDAK sebanding dgn ds_B yang 3 lipatan +/- std"
+L1 Peru,jalur bukti ketiga,mAP50 gabungan,0.9495,,1.0,,,"YOLOv12n 30 epoch, fold0 seed42, 86 citra val"
+L1 Peru,jalur bukti ketiga,mAP50-95 gabungan,0.7032,,1.0,,,"1 LIPATAN 1 SEED - TIDAK sebanding dgn ds_B yang 3 lipatan +/- std"
+L1 Peru,jalur bukti ketiga,kontrol crown ROC-AUC,0.9524,,1.0,,,"tajuk saja; n_val=73"
+L1 Peru,jalur bukti ketiga,kontrol context ROC-AUC,0.9198,,1.0,,,"konteks saja"
+L1 Peru,jalur bukti ketiga,kontrol full ROC-AUC,0.8802,,1.0,,,"tajuk+konteks; LEBIH BURUK dari crown saja -> konteks tidak menambah"
+L1 Peru,jalur bukti ketiga,kontrol crown PR-AUC,0.9469,,1.0,,,""
+L1 Peru,jalur bukti ketiga,kontrol context PR-AUC,0.8607,,1.0,,,""
+L1 Peru,jalur bukti ketiga,kontrol full PR-AUC,0.8478,,1.0,,,""
+L1 Peru,jalur bukti ketiga,kotak diprediksi per citra,1.7209,,1.0,,,"GT 1.267 -> lebih-prediksi 36%; 28 dari 86 citra pred>GT"
 L2 Eg9PP,v3 ablasi kolom h=3,AP 1 kolom is_sympt,0.0916,0.0081,20.0,,,"lift 1,45x; 7 tingkat mungkin; yang detektor beri sekarang"
 L2 Eg9PP,v3 ablasi kolom h=3,AP 2 kolom + is_dead,0.0962,0.0081,20.0,,,"lift 1,52x; 23 tingkat; TARGET kalau detektor punya kelas mati"
 L2 Eg9PP,v3 ablasi kolom h=3,AP 3 kolom + is_cens,0.0999,0.0077,20.0,,,"lift 1,58x; 46 tingkat; is_cens mustahil dari foto"

@@ -8,16 +8,26 @@ Konsep sistem peringatan dini **Busuk Pangkal Batang (BSR / *Ganoderma boninense
 # ➜ MULAI DI SINI: [`00_HASIL.md`](00_HASIL.md)
 
 Satu berkas berisi **pipeline lengkap** dan **seluruh hasil eksperimen**. Kalau cuma sempat baca
-satu berkas, baca itu. Angka mentahnya di [`00_RINGKASAN.csv`](00_RINGKASAN.csv) (38 baris).
+satu berkas, baca itu. Angka mentahnya di [`00_RINGKASAN.csv`](00_RINGKASAN.csv) (98 baris).
 
-**Tiga temuan utama:**
+⚠ **Sebelum mengutip angka ke naskah:** buka [`00_ANGKA_FINAL.md`](00_ANGKA_FINAL.md). Paket
+ini memuat angka dari sembilan konfigurasi berbeda dan beberapa pasang di antaranya **tidak
+sebanding**; berkas itu menandai mana yang masuk paper sebagai angka utama.
+
+**Empat temuan utama:**
 
 1. **Peta kontak yang benar bekerja** — pada data lapangan Ganoderma 25 tahun, struktur graf
    menyumbang **+0,0151 AUC-PR (39 dari 40 pasangan)**, bertahan terhadap null permutasi
    terkontrol-genotipe (kelebihan 1,25–1,29×, **0 dari 500** permutasi mencapainya).
-2. **Lapisan epidemiologi terlatih justru merugikan** — kepala SI(D) **NEG di keempat horizon**,
+2. **Riwayat waktu ternyata tidak dibutuhkan** — dinilai **dalam-sensus** (satu-satunya
+   metrik yang adil untuk memeringkat di dalam satu bidikan), varian yang hanya memakai
+   kondisi tetangga — persis yang bisa diberikan satu foto drone — **menyamai** model penuh
+   (+0,0042 ± 0,0035, 36/40), dan **77%** kemampuannya datang khusus dari peta kontak yang
+   benar (+0,0296, **40/40**). Ongkosnya diukur: kontaminasi kekerabatan **36%**, dan
+   **59% sinyal bertahan** saat masukan datang dari detektor.
+3. **Lapisan epidemiologi terlatih justru merugikan** — kepala SI(D) **NEG di keempat horizon**,
    memburuk seiring horizon. Dugaan mudahnya (inisialisasi) sudah diuji dan ditolak untuk h≥2.
-3. **Sebagian besar "efek tetangga" adalah confounding waktu** — RR 4,47× runtuh jadi **1,65×**
+4. **Sebagian besar "efek tetangga" adalah confounding waktu** — RR 4,47× runtuh jadi **1,65×**
    setelah stratifikasi per sensus. Yang bertahan tetap nyata, tapi jauh lebih kecil.
 
 ---
@@ -159,6 +169,11 @@ seluruh pemeriksaan (exit 0).
 
 ## Enam larangan yang berlaku di seluruh paket
 
+⚠ **Penomoran.** Ada **dua** daftar enam larangan di paket ini: yang di bawah berlaku untuk
+seluruh paket, dan `layer2_real/INTERFACE.md` punya daftarnya sendiri khusus Lapisan 2 dengan
+isi **dan nomor yang berbeda**. Saat mengutip, sebut daftarnya — "larangan #5 `INTERFACE.md`"
+(genotipe wajib) bukan hal yang sama dengan "#5" di bawah (pohon tersensor).
+
 1. **Jangan** memakai split acak pada Lapisan 1 — hanya 3 ortomosaik, split acak bocor 100%.
 2. **Jangan** mengutip 151.060 sebagai ukuran sampel. Unitnya **5.077 pohon unik**.
 3. **Jangan** menyebut label Roboflow sebagai BSR. Itu kesehatan tajuk generik tanpa verifikasi lapangan.
@@ -177,6 +192,10 @@ Hak cipta **PalmElit & CIRAD**, lisensi **CC BY-SA 4.0**. Detail: `data_clean/Eg
 
 **Roboflow ds_B** — `health-detection/oil-palm-health-detection`. Lihat berkas README Roboflow di
 dalam `layer1_build/ds_B/`.
+
+**Anomali tajuk sawit Peru (`PalmAnom` / `PalmSan`)** — Mendeley Data,
+doi:`10.17632/nh7d23dgnw.1`, lisensi **CC BY 4.0**. Dipakai sebagai jalur bukti ketiga yang
+berdiri sendiri (`00_HASIL.md` §2.6); **tidak pernah digabung** dengan ds_B.
 
 ---
 

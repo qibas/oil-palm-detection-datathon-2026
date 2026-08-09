@@ -91,6 +91,8 @@ def main():
          "derajat @1,5×", "**UTAMA**", "ya"),
         ("agregasi blok", "lift 1,24× < pohon 1,61×", "Eg9PP", "6", "1", "3",
          "tangkapan top5", "**UTAMA (negatif)**", "tidak"),
+        ("mAP50 Peru (PalmAnom/PalmSan)", "0,9495", "Peru", "—", "—", "—",
+         "mAP50", "pendukung — **1 lipatan**", "tidak"),
         ("keluaran demo apa pun", "—", "foto", "1", "1", "3",
          "—", "**JANGAN DIKUTIP**", "ya"),
     ]:
@@ -123,6 +125,36 @@ def main():
         W("| %s | **%s** | pohon bagian dalam, r = 1,5 × jarak tanam | satu sama lain saja |"
           % (item, v))
     W("")
+
+    # ------------------------------------------------------------- A2 (Peru)
+    W("### A2 · Jalur bukti ketiga — Peru (PalmAnom / PalmSan)\n")
+    W("**1 lipatan, 1 seed, 86 citra validasi.** Tidak ada mean ± std, sehingga "
+      "`paired()` tidak berlaku dan angka ini **tidak boleh** diadu dengan F1 pusat "
+      "0,960 ± 0,024 milik ds_B. Ia dilaporkan sebagai dukungan kualitatif — "
+      "detektor tajuk bekerja di kebun, sensor dan negara yang berbeda — bukan "
+      "sebagai hasil terukur. Sumber: `layer1_build/stage1_summary.json`.\n")
+    W("| Angka | Nilai | Sebanding dengan |")
+    W("|---|---|---|")
+    for item, cmpw in [
+        ("mAP50 gabungan", "hanya angka Peru lain"),
+        ("PalmAnom AP50", "PalmSan AP50"),
+        ("PalmSan AP50", "PalmAnom AP50"),
+        ("mAP50-95 gabungan", "hanya angka Peru lain"),
+        ("kontrol crown ROC-AUC", "dua kontrol Peru lainnya"),
+        ("kontrol context ROC-AUC", "dua kontrol Peru lainnya"),
+        ("kontrol full ROC-AUC", "dua kontrol Peru lainnya"),
+        ("kotak diprediksi per citra", "GT 1,267 per citra"),
+    ]:
+        r = get(rs, "jalur bukti ketiga", item)
+        v, _, _ = fmt(r, 4)
+        W("| %s | **%s** | %s |" % (item, v, cmpw))
+    W("")
+    W("Dua hal yang harus ikut dinyatakan bila angka ini dipakai. Pertama, kontrol "
+      "**full (tajuk + konteks) justru LEBIH BURUK** daripada tajuk saja "
+      "(ROC-AUC 0,880 lawan 0,952) — konteks di sekitar tajuk tidak menambah "
+      "informasi, ia mengencerkannya. Kedua, detektornya **lebih-prediksi 36%** "
+      "(1,72 kotak per citra lawan 1,27 pada ground truth; 28 dari 86 citra "
+      "melebihi GT), jadi mAP50 0,95 tidak berarti pencacahan pohonnya tepat.\n")
 
     # ---------------------------------------------------------------- B
     W("## B · Eg9PP, model PENUH — 24 kolom, W=3, **AP gabungan**\n")
@@ -230,6 +262,9 @@ def main():
       "butuh dua kunjungan; 1 kolom yang bisa diberi satu foto |")
     W("| **0,960** F1 pusat (A) ↔ **0,687** mAP50 (A) | mAP berlangit-langit label; "
       "keduanya sah dilaporkan, tidak sah diadu |")
+    W("| **0,9495** mAP50 Peru (A2) ↔ **0,687** mAP50 ds_B (A) | dataset, kebun, sensor "
+      "dan negara berbeda; Peru **1 lipatan tanpa std**, ds_B 3 lipatan. Peru juga "
+      "berlabel anomali tajuk, bukan kesehatan |")
     W("| angka mana pun ↔ keluaran demo | checkpoint demo dilatih tanpa held-out; "
       "**tidak ada** angka performa yang boleh dikutip darinya |")
     W("")

@@ -46,6 +46,33 @@ jauh dari tepi ubin (paling kecil kemungkinan terpotong). 1.836 ubin terpakai, d
 
 ---
 
+## Dataset 1b — Anomali tajuk Peru (jalur bukti ketiga)
+
+Sumber ketiga yang **berdiri sendiri**. Tidak pernah digabung dengan ds_B, sama seperti
+Lapisan 1 tidak pernah digabung dengan Lapisan 2. Ia menjawab satu pertanyaan sempit:
+apakah detektor tajuk yang sama bekerja di kebun, sensor dan negara yang berbeda?
+
+| | |
+|---|---|
+| Berkas | dibangun `layer1_build/anom.py` → `anom_data/` (**tidak dilacak git**, berkas lipatannya memuat path absolut) |
+| Sumber | Mendeley Data, DOI **`10.17632/nh7d23dgnw.1`** |
+| Lisensi | **CC BY 4.0** — atribusi wajib, lihat `README.md` |
+| Modalitas | UAV RGB, kebun sawit di **Peru** |
+| Label | dua kelas anomali tajuk: **PalmAnom** dan **PalmSan**. Sekali lagi **bukan BSR** |
+| Unit | 424 citra; **86 citra validasi**, 109 kotak GT |
+| Fold | `anom.build(k=5, seed=42)`, tetapi **hanya fold0 seed42 yang dijalankan** |
+| Metrik | mAP50 · mAP50-95 · tiga kontrol ablasi (crown / context / full) |
+| **Batas yang dipaksakan** | **1 lipatan, 1 seed ⇒ tidak ada mean ± std.** Aturan putusan `paired()` yang mengikat seluruh paket **tidak berlaku** di sini, sehingga angkanya **tidak boleh** diadu dengan F1 pusat 0,960 ± 0,024 milik ds_B dan **tidak boleh** disebut replikasi. Klaim maksimum = **dukungan kualitatif** bahwa deteksi tajuk memindah lintas-situs. Ditambah: detektornya **lebih-prediksi 36%** (1,72 kotak/citra lawan 1,267 GT; 28 dari 86 citra melebihi GT), jadi mAP50 0,95 **tidak** berarti pencacahan pohonnya tepat — padahal pencacahan justru yang dibutuhkan untuk membangun graf |
+
+**Temuan sampingan yang harus ikut dibawa.** Kontrol `full` (tajuk + konteks) **lebih buruk**
+daripada `crown` (tajuk saja): ROC-AUC 0,880 lawan 0,952, PR-AUC 0,848 lawan 0,947. Piksel di
+sekitar tajuk tidak menambah informasi, ia mengencerkannya. Arahnya sejajar dengan temuan
+Lapisan 2 bahwa memperluas jangkauan masukan tidak menolong.
+
+Angkanya di `layer1_build/stage1_summary.json`; dilaporkan di `00_HASIL.md` §2.6.
+
+---
+
 ## Dataset 2 — Panel epidemi lapangan 25 tahun (Lapisan 2, nyata)
 
 | | |
