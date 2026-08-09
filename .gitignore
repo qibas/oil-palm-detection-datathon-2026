@@ -10,6 +10,11 @@ __pycache__/
 layer1_build/yolo12/
 layer1_build/yolo12_1c/
 
+# Lari VERIFIKASI satu lipatan (run_1fold_yolov12n.ipynb). Bobot 3-lipatan
+# `yolo12n_base_fold*` TETAP dilacak - demo membutuhkannya. Yang ini tidak:
+# ia lari pemeriksaan, bukan aset demo, dan angkanya tidak masuk naskah.
+layer1_build/yolo12_runs/*_1fold_*/
+
 # Cache pemindaian label Ultralytics
 *.cache
 

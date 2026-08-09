@@ -46,7 +46,10 @@ sys.path.insert(0, BASE)
 import y12  # noqa: E402
 
 SEED = int(os.environ.get("SEED", 42))
-TAG = "yolo12n_base"
+# TAG dapat ditimpa lewat env supaya lari satu lipatan (tag `yolo12n_base_1fold`,
+# lihat run_1fold_yolov12n.ipynb) dinilai oleh KODE YANG SAMA, bukan salinan.
+# Default tetap lari 3 lipatan yang angkanya masuk naskah.
+TAG = os.environ.get("TAG", "yolo12n_base")
 IMGSZ = int(os.environ.get("IMGSZ", 640))
 RADIUS_FRAC = 0.5          # ambang cocok, kelipatan jarak tanam
 R_GRAPH = 1.5              # radius graf kontak, kelipatan jarak tanam
@@ -55,8 +58,8 @@ CONFS = [float(x) for x in os.environ.get(
 FOLDS = [f"fold{int(x)}" for x in os.environ.get("FOLDS", "0,1,2").split(",")]
 
 
-def weights_of(fold):
-    p = os.path.join(y12.RUNS, f"{TAG}_{fold}_s{SEED}", "weights", "best.pt")
+def weights_of(fold, tag=None):
+    p = os.path.join(y12.RUNS, f"{tag or TAG}_{fold}_s{SEED}", "weights", "best.pt")
     return p if os.path.isfile(p) else None
 
 

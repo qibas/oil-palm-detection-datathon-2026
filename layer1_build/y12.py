@@ -597,12 +597,28 @@ def _setting(model, epochs, imgsz, folds, seeds):
 # --------------------------------------------------------------------------
 # 4. Putusan berpasangan - aturan yang sama dengan Lapisan 2
 # --------------------------------------------------------------------------
-def load_results(only=None, exclude_suffix=("_final",)):
+def load_results(only=None, exclude_suffix=("_final", "_1fold")):
     """Muat berkas hasil. Lari bertanda `_final` dikecualikan secara default:
-    ia dilatih dengan jumlah epoch berbeda, jadi ia bukan anggota ablasi."""
+    ia dilatih dengan jumlah epoch berbeda, jadi ia bukan anggota ablasi.
+
+    `_1fold` dikecualikan karena alasan yang lebih keras lagi: lari satu lipatan
+    (`run_1fold_yolov12n.ipynb`) punya `setting["folds"]` yang berbeda, sehingga
+    `paired()` akan MEMBATALKAN seluruh perbandingan begitu ia ikut termuat.
+    Ia juga tidak punya mean +/- std, jadi ia bukan anggota ablasi apa pun -
+    perlakuannya sama dengan jalur bukti Peru: dilaporkan sendiri, tidak diadu.
+
+    RESDIR juga menampung berkas yang BUKAN hasil lengan - `centre_eval.json`,
+    `centre_eval_1fold.json`, `unhealthy_threshold.json`. Berkas semacam itu
+    dilewati, dikenali dari tidak adanya kunci `runs`. Tanpa saringan ini
+    `unhealthy_threshold.json` (tanpa kunci `tag`) melempar KeyError, dan
+    `centre_eval.json` - yang memakai tag `yolo12n_base` yang SAMA dengan berkas
+    lengannya - dapat menggantikan hasil lengan sungguhan tergantung urutan glob.
+    """
     runs = {}
     for p in sorted(glob.glob(os.path.join(RESDIR, "*.json"))):
         d = json.load(open(p))
+        if "tag" not in d or "runs" not in d:
+            continue                      # bukan berkas lengan
         if only is not None:
             if d["tag"] not in only:
                 continue
