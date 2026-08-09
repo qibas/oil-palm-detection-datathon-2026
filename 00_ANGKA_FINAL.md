@@ -21,7 +21,7 @@ tanpa menyebut perbedaannya.
 | AP foto 1 kolom + derau detektor | 0,0800 → lift **1,27×** | foto | 1 | 1 | 3 | AP dalam-sensus | **UTAMA** | **YA — ujung-ke-ujung** |
 | nilai kelas MATI | +0,0046 (20/20) | foto | 2−1 | 1 | 3 | AP dalam-sensus | pendukung | tidak (butuh kelas baru) |
 | null dalam-famili+petak | 0/200, 64% spasial | foto | 6 | 1 | 3 | AP dalam-sensus | **UTAMA** | disebut di kotak batas |
-| presisi@5% teratas | 1 kasus per **8,8** pohon, **1,81×** | Eg9PP | 6 | 1 | 3 | presisi@k | **UTAMA** | tidak |
+| presisi@5% teratas | 1 kasus per **8,8** pohon, **1,81×** | Eg9PP | 6 | 1 | 3 | presisi@k | ⚠ **JANGAN DIKUTIP** — tanpa sumber | tidak |
 | F1 pusat tajuk | 0,960 ± 0,024 | Lapisan 1 | — | — | — | F1 pusat | **UTAMA** | ya |
 | derajat jembatan | 5,54 ± 0,12 vs 5,74 | Lapisan 1 vs 2 | — | — | — | derajat @1,5× | **UTAMA** | ya |
 | agregasi blok | lift 1,24× < pohon 1,61× | Eg9PP | 6 | 1 | 3 | tangkapan top5 | **UTAMA (negatif)** | tidak |
@@ -33,6 +33,13 @@ diukur pada konfigurasi **6 dan 24 kolom**, sedangkan demo menjalankan varian
 **1 kolom** — satu-satunya yang bisa diberi makan satu foto. Angka demo yang sah 
 adalah **1,45×** (masukan bersih) dan **1,27×** (lewat detektor). Menyebut 1,61× 
 sambil menunjuk layar demo adalah salah kutip.
+
+⚠ **Baris `presisi@5% teratas` tidak punya sumber.** Ia tidak ada di 
+`00_RINGKASAN.csv`, dan tidak ada satu pun skrip di paket ini yang menghitung 
+presisi@k — nilainya hanya pernah diketik tangan di dua tempat, dan kedua 
+salinan itu tidak sepakat (`demo_core.py` memberi 1,80×, tabel ini 1,81×). 
+Sampai ada kode yang menghasilkannya beserta barisnya di CSV, ia **tidak boleh 
+masuk naskah**. Setiap baris lain di tabel ini diturunkan dari CSV.
 
 ## A · Lapisan 1 — penginderaan dan uji jembatan
 
