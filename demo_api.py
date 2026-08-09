@@ -138,6 +138,12 @@ async def api_analyze(request):
         _sk = t.skor.values
         _n = max(1, len(_sk))
         _pct = {float(s): round(100.0 * float((_sk >= s).sum()) / _n, 1) for s in _sk}
+
+        # Tingkat ordinal: 1 = paling tinggi. Diturunkan dari skor DISTINCT, bukan
+        # dari peringkat, supaya sawit yang seri menempati tingkat yang sama - dan
+        # supaya jumlah tingkatnya persis sebanyak yang model sungguh bedakan.
+        _lev = sorted({float(s) for s in _sk}, reverse=True)
+        _lvl = {s: i + 1 for i, s in enumerate(_lev)}
         return {
             "degenerate": bool(res["degenerate"]),
             "n_risk": int(res["n_risk"]), "n_sumber": int(res["n_sumber"]),
@@ -153,8 +159,9 @@ async def api_analyze(request):
                         "nb_sick": int(r.tetangga_sakit), "rank": int(r.peringkat)}
                        for r in t.itertuples()],
             "sources": [{"x": nx(p[0]), "y": ny(p[1])} for p in res.get("sumber_xy", [])],
+            "n_lev": len(_lev),
             "top10": [{"rank": int(r.peringkat), "skor": round(float(r.skor), 4),
-                       "pct": _pct[float(r.skor)],
+                       "pct": _pct[float(r.skor)], "lvl": _lvl[float(r.skor)],
                        "nb": int(r.tetangga), "nb_sick": int(r.tetangga_sakit),
                        "q": int(r.kuintil)} for r in t.head(10).itertuples()],
             "nb_sick_top5": float(t.head(5).tetangga_sakit.mean()),
