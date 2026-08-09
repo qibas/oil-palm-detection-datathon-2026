@@ -190,6 +190,7 @@ def photo_checks(info):
     out = [{
         "judul": "Jumlah sawit",
         "syarat_foto": True,
+        "berat": True,          # gagal di sini = TIDAK ADA peringkat sama sekali
         "ok": ok_n,
         "punyamu": "%d sawit terdeteksi" % n,
         "syarat": "minimal %d" % dc.MIN_TREES_FOR_SPACING,
@@ -205,6 +206,12 @@ def photo_checks(info):
         out.append({
             "judul": "Skala foto",
             "syarat_foto": True,
+            # RINGAN: peringkatnya tetap keluar dan grafnya tetap benar - radius graf
+            # diturunkan dari jarak tanam yang TERUKUR di citra itu, jadi ia ikut
+            # menyesuaikan skala. Yang meragukan adalah kelengkapan daftar pohonnya,
+            # karena detektor bekerja di luar kondisi latihnya. Karena itu pengguna
+            # boleh memilih tetap melihat hasilnya.
+            "berat": False,
             "ok": ok_s,
             "punyamu": "jarak antar sawit %.0f piksel (%.2f× acuan)" % (sp, ratio),
             "syarat": "%.0f–%.0f piksel" % (lo, hi),
@@ -216,6 +223,7 @@ def photo_checks(info):
     out.append({
         "judul": "Sawit bergejala",
         "syarat_foto": False,          # informatif; tidak pernah memicu dialog
+        "berat": False,
         "ok": n_s > 0,
         "punyamu": "%d tajuk tidak sehat" % n_s,
         "syarat": "minimal 1",

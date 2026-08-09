@@ -119,7 +119,7 @@ code,.mono{font-family:var(--font-mono)}
 .modal-s{margin-top:8px; padding:9px 12px; background:var(--mint-100);
   border-radius:var(--radius-md); font:400 12px/1.55 var(--font-body);
   color:var(--text-secondary)}
-.modal-f{padding:14px 22px; display:flex; justify-content:flex-end}
+.modal-f{padding:14px 22px; display:flex; justify-content:flex-end; gap:8px}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 
 /* ---------------- Ya / Tidak, menggantikan 0 / 1 di tabel ---------------- */

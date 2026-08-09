@@ -619,35 +619,50 @@ function Evidence({ d }) {
 
 
 /* ------------------------------------------------- dialog syarat foto ----
-   Muncul SEKALI setelah analisis, dan HANYA kalau ada butir yang tidak lolos.
-   Foto tetap diproses di belakangnya - dialog ini menerangkan apa yang membuat
-   hasilnya kurang bisa dipercaya, bukan menghalangi. */
-function SyaratDialog({ checks, onClose }) {
-  const gagal = (checks || []).filter(c => !c.ok);
-  if (!gagal.length) return null;
+   Muncul setelah analisis, HANYA kalau ada syarat foto yang tidak lolos, dan
+   muncul di atas layar UNGGAH - bukan layar Hasil. Analisisnya sendiri sudah
+   terlanjur jalan (syaratnya diukur dari hasil deteksi), tetapi mendaratkan
+   pengguna di Hasil akan menyiratkan angkanya layak dipakai.
+
+   `berat` menentukan pilihannya. Gagal berat = tidak ada peringkat sama sekali,
+   jadi tidak ada yang bisa dilihat. Gagal ringan = peringkatnya ada tapi daftar
+   pohonnya belum tentu lengkap, jadi pengguna boleh memilih tetap melihatnya. */
+function SyaratDialog({ checks, adaHasil, onClose, onTetap }) {
+  const semua = (checks || []).filter(c => !c.ok);
+  const syarat = semua.filter(c => c.syarat_foto);
+  if (!syarat.length) return null;
+  const berat = syarat.some(c => c.berat);
   return <div className="modal-bg" onClick={onClose}>
     <div className="modal" onClick={e => e.stopPropagation()}>
       <div className="modal-h">
         <div>
           <div style={{ font: "600 18px var(--font-display)" }}>
-            Foto ini {gagal.length > 1 ? "belum memenuhi beberapa syarat" : "punya satu catatan"}
+            {berat ? "Foto ini belum bisa dibaca" : "Foto ini di luar rentang yang diuji"}
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
-            Hasilnya tetap ditampilkan, tapi baca ini dulu.
+            {berat
+              ? "Tidak ada daftar prioritas yang bisa dibuat dari foto ini."
+              : "Peringkatnya bisa dibuat, tapi keandalannya berkurang."}
           </div>
         </div>
         <button className="modal-x" onClick={onClose} aria-label="Tutup">✕</button>
       </div>
-      {gagal.map((c, i) => <div className="modal-r" key={i}>
+      {semua.map((c, i) => <div className="modal-r" key={i}>
         <div className="modal-rh">
           <b>{c.judul}</b>
-          <span className="yn yn-no">{c.punyamu}</span>
+          <span className={"yn " + (c.syarat_foto ? "yn-ya" : "yn-no")}>{c.punyamu}</span>
         </div>
         <div className="fine">Dibutuhkan: {c.syarat}</div>
         <div className="modal-s">{c.saran}</div>
       </div>)}
       <div className="modal-f">
-        <button className="btn btn-primary btn-sm" onClick={onClose}>Mengerti</button>
+        {!berat && adaHasil &&
+          <button className="btn btn-ghost btn-sm" onClick={onTetap}>
+            Tetap lihat hasilnya
+          </button>}
+        <button className="btn btn-primary btn-sm" onClick={onClose}>
+          Pilih foto lain
+        </button>
       </div>
     </div>
   </div>;
@@ -682,19 +697,30 @@ function App() {
       const r = await fetch("/api/analyze", { method: "POST", body: fd });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
-      clearInterval(tick); setData(j); setScreen("res");
+      clearInterval(tick); setData(j);
       // Hanya SYARAT foto yang memicu dialog. Butir informatif (mis. tidak ada
       // tajuk bergejala) ikut ditampilkan kalau dialognya terlanjur terbuka, tapi
       // tidak pernah memunculkannya sendiri - petak sehat bukan foto yang cacat.
-      setSyarat((j.checks || []).some(c => !c.ok && c.syarat_foto) ? j.checks : null);
+      //
+      // KENAPA LAYAR PROSES TETAP LEWAT. Syaratnya diukur DARI hasil deteksi -
+      // jumlah sawit dan jarak tanam tidak bisa diketahui dari berkas mentah, jadi
+      // detektor harus jalan lebih dulu. Yang bisa dijamin adalah ia tidak MENDARAT
+      // di layar Hasil: kalau ada syarat yang gagal, kita kembali ke Unggah dan
+      // dialognya muncul di sana.
+      const gagal = (j.checks || []).filter(c => !c.ok && c.syarat_foto);
+      setSyarat(gagal.length ? j.checks : null);
+      setScreen(gagal.length ? "upload" : "res");
     } catch (e) { clearInterval(tick); setErr(String(e)); setScreen("upload"); }
   };
 
   const step = screen === "upload" ? 0 : screen === "proc" ? 1 : 2;
   return <React.Fragment>
     <AppBar step={step} view={view} onView={setView} />
-    {view === "app" && screen === "res" && syarat &&
-      <SyaratDialog checks={syarat} onClose={() => setSyarat(null)} />}
+    {view === "app" && syarat && <SyaratDialog
+      checks={syarat}
+      adaHasil={!!(data && data.risk)}
+      onClose={() => setSyarat(null)}
+      onTetap={() => { setSyarat(null); setScreen("res"); }} />}
     {err && <div className="page"><div className="note note-warn">Gagal: {err}</div></div>}
     {view === "bukti" ? <Evidence d={eg} /> : <React.Fragment>
       {screen === "upload" && <Upload samples={samples} onRun={run} />}
