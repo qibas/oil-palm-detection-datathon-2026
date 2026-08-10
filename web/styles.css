@@ -119,7 +119,7 @@ code,.mono{font-family:var(--font-mono)}
 .modal-s{margin-top:8px; padding:9px 12px; background:var(--mint-100);
   border-radius:var(--radius-md); font:400 12px/1.55 var(--font-body);
   color:var(--text-secondary)}
-.modal-f{padding:14px 22px; display:flex; justify-content:flex-end}
+.modal-f{padding:14px 22px; display:flex; justify-content:flex-end; gap:8px}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 
 /* ---------------- Ya / Tidak, menggantikan 0 / 1 di tabel ---------------- */
@@ -128,6 +128,11 @@ code,.mono{font-family:var(--font-mono)}
 .yn-ya{background:#FDECEA; color:#8E1F23}
 .yn-no{background:var(--mint-100); color:var(--text-muted)}
 .yn i{font-style:normal; font-weight:500; opacity:.75}
+/* label tingkat di tabel foto: titik warna + kata, warnanya sama dengan peta */
+.lvl{display:inline-flex; align-items:center; gap:7px; font:600 13px var(--font-body);
+  white-space:nowrap}
+.lvl i{width:9px; height:9px; border-radius:50%; flex:0 0 auto}
+
 /* label kecil di samping persentil ("teratas") - tidak boleh seberat angkanya */
 .tt{font-style:normal; font-family:var(--font-body); font-weight:400; font-size:11px;
   color:var(--text-muted)}
@@ -207,6 +212,10 @@ tbody tr:hover{background:var(--mint-100)}
 .legend{display:flex; flex-wrap:wrap; gap:14px; align-items:center;
   font-size:12px; color:var(--text-muted)}
 .legend .sw2{display:inline-flex; align-items:center; gap:6px}
+/* contoh lencana nomor - harus sama persis dengan yang digambar di kanvas */
+.legend .lg-num{display:inline-grid; place-items:center; width:17px; height:17px;
+  border-radius:50%; background:#fff; border:1.6px solid var(--ink-900);
+  font:700 11px var(--font-body); color:var(--ink-900); margin-right:-8px}
 .dot{width:10px; height:10px; border-radius:50%; display:inline-block}
 .ramp{display:flex; width:100%; border-radius:var(--radius-pill); overflow:hidden}
 .ramp i{flex:1 1 0; height:10px; display:block}

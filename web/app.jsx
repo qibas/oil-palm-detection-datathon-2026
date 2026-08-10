@@ -36,13 +36,41 @@ const num = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v))
    PENTING soal kelompok terbawah. Jalur foto sering hanya membedakan dua tingkat,
    sehingga semua sawit di luar kelompok teratas berpersentil TEPAT 100 - benar secara
    aritmetika ("berada di 100% teratas") tetapi terbaca manusia sebagai prioritas
-   MAKSIMUM, yaitu kebalikan artinya. Kelompok itu karena itu ditulis "sisanya". */
+   MAKSIMUM, yaitu kebalikan artinya. Kelompok itu karena itu ditulis "sisanya".
+
+   Tabel FOTO tidak memakai persentil sama sekali (lihat `Tingkat` di bawah);
+   persentil hanya dipakai di tabel Eg9PP, yang punya 672 sawit dengan skor
+   nyaris tanpa seri sehingga urutannya monoton dan tidak membingungkan. */
 const Prioritas = ({ pct }) => {
   if (pct === null || pct === undefined || Number.isNaN(pct))
     return <span className="tt">—</span>;
   if (pct >= 99.95) return <span className="tt">sisanya</span>;
   return <span><b>{pct < 1 ? Number(pct).toFixed(1).replace(".", ",")
     : String(Math.round(pct))}%</b> <i className="tt">teratas</i></span>;
+};
+
+/* Label tingkat untuk tabel FOTO. Persentil terbukti membingungkan di sini:
+   angkanya MENGECIL saat prioritas naik ("6% teratas" di atas "11% teratas"),
+   dan pada jalur foto hampir semua sawit seri sehingga angkanya berulang.
+
+   Kosakatanya menyesuaikan JUMLAH TINGKAT yang sungguh dibedakan model - biasanya
+   dua. Memaksakan lima nama untuk dua tingkat akan mengarang perbedaan yang tidak
+   diukur; itu persis kesalahan yang pernah terjadi dengan lima pita kuintil. */
+const LADDER = {
+  1: ["Tinggi"],
+  2: ["Tinggi", "Rendah"],
+  3: ["Tinggi", "Sedang", "Rendah"],
+  4: ["Sangat tinggi", "Tinggi", "Rendah", "Sangat rendah"],
+  5: ["Sangat tinggi", "Tinggi", "Sedang", "Rendah", "Sangat rendah"],
+};
+const Tingkat = ({ lvl, n }) => {
+  if (!lvl || !n) return <span className="tt">—</span>;
+  const kata = (LADDER[n] || LADDER[5])[Math.min(lvl, (LADDER[n] || LADDER[5]).length) - 1];
+  // Warna diturunkan dari tingkat yang sama dengan katanya, sehingga titik di tabel
+  // selalu cocok dengan warna sawit itu di peta. Dulu keduanya berasal dari dua
+  // sumber berbeda dan bisa berselisih.
+  const c = QHEX[n < 2 ? 4 : Math.round((n - lvl) / (n - 1) * 4)];
+  return <span className="lvl"><i style={{ background: c }} />{kata}</span>;
 };
 
 /* "Ada sawit sakit yang bersentuhan?" -> Ya / Tidak, bukan 0 / 1. */
@@ -221,6 +249,26 @@ function Overlay({ src, w, h, mode, data, showGreys }) {
       risk.points.forEach(p => dot(p.x, p.y,
         cont ? rampColor(p.v) : QHEX[p.q - 1],
         (cont ? p.v > 0.8 : p.q === 5) ? 7 : 5.5));
+
+      // Nomor 10 teratas, supaya baris tabel bisa dirujuk ke titik di peta.
+      // Digambar SESUDAH semua titik agar tidak tertimpa tetangganya.
+      //
+      // Lencananya putih dengan teks gelap, bukan mewarisi warna pita: pita
+      // terendah (#EE9A87) terlalu terang untuk teks putih, dan pita tertinggi
+      // (#4F1315) terlalu gelap untuk teks gelap - satu gaya netral terbaca di
+      // atas keduanya sekaligus di atas citra apa pun.
+      const R = 8.5;
+      risk.points.filter(p => p.rank <= 10).forEach(p => {
+        const bx = Math.min(W - R - 1, Math.max(R + 1, p.x * W + 10));
+        const by = Math.min(H - R - 1, Math.max(R + 1, p.y * H - 10));
+        g.beginPath(); g.arc(bx, by, R, 0, 7);
+        g.fillStyle = "#fff"; g.fill();
+        g.lineWidth = 1.6; g.strokeStyle = INK; g.stroke();
+        g.fillStyle = INK;
+        g.font = '700 11px "Instrument Sans", system-ui, sans-serif';
+        g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillText(String(p.rank), bx, by + .5);
+      });
     } else {
       (data.crowns || []).forEach(c2 =>
         dot(c2.x, c2.y, c2.cls === "Unhealthy" ? DANGER : GREEN));
@@ -270,10 +318,11 @@ function Results({ d, onReset }) {
             // menyembunyikannya, tetapi berkas kerja tidak boleh kehilangan angka
             // aslinya. Urutan kolomnya persentil dulu, supaya yang terbaca lebih
             // dahulu adalah yang bermakna.
-            const rows = [["peringkat", "persentil_teratas", "tetangga",
-                           "tetangga_sakit", "ada_sakit", "skor_mentah", "pita"]]
-              .concat(risk.top10.map(r => [r.rank, r.pct, r.nb, r.nb_sick,
-                                           r.nb_sick > 0 ? "ya" : "tidak", r.skor, r.q]));
+            const rows = [["peringkat", "tingkat", "dari_n_tingkat", "persentil_teratas",
+                           "tetangga", "tetangga_sakit", "ada_sakit", "skor_mentah", "pita"]]
+              .concat(risk.top10.map(r => [r.rank, r.lvl, risk.n_lev, r.pct, r.nb,
+                                           r.nb_sick, r.nb_sick > 0 ? "ya" : "tidak",
+                                           r.skor, r.q]));
             const csv = rows.map(r => r.join(",")).join("\n");
             const a = document.createElement("a");
             a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -327,6 +376,8 @@ function Results({ d, onReset }) {
               </div>
             </div>
             <div className="legend">
+              <span className="lg-num">1</span>
+              <span>nomor 10 teratas — sama dengan nomor di daftar prioritas</span>
               <span>✕ sudah bergejala — jadi sumber penularan, tidak ikut diperingkat</span>
             </div>
             {risk.mode !== "kontinu" && <div className="note note-soft" style={{ padding: 14 }}>
@@ -428,7 +479,7 @@ function Results({ d, onReset }) {
             <tbody>{risk.top10.map(r =>
               <tr key={r.rank}>
                 <td><span className="rank-pill">{r.rank}</span></td>
-                <td className="num"><Prioritas pct={r.pct} /></td>
+                <td><Tingkat lvl={r.lvl} n={risk.n_lev} /></td>
                 <td className="num">{r.nb}</td>
                 <td><YaTidak ada={r.nb_sick > 0} n={r.nb_sick} /></td>
               </tr>)}</tbody>
@@ -438,6 +489,11 @@ function Results({ d, onReset }) {
               Sawit yang bersentuhan dengan sawit sakit: <b>{num(risk.nb_sick_top5)}</b> rata-rata
               pada 5 teratas, lawan <b>{num(risk.nb_sick_all)}</b> pada seluruh sawit
               yang dinilai. Sistem membaca <b>keadaan tetangga</b>, bukan pohon itu sendiri.
+            </div>
+            <div className="fine" style={{ marginTop: 8 }}>
+              Nomor 1–10 juga ditandai di peta. Nomor itu untuk mencari pohonnya —
+              di dalam tingkat yang sama urutannya <b>tidak berarti apa-apa</b>,
+              nomor 1 dan 5 sama mendesaknya.
             </div>
           </div>
         </div> : <div className="card">
@@ -475,9 +531,10 @@ function Results({ d, onReset }) {
         </div>}
 
         <div className="note note-soft">
-          <b>Ini urutan kunjungan, bukan ramalan.</b> “1% teratas” berarti sawit itu
-          paling mendesak diperiksa dibanding sawit lain di foto yang sama — <b>bukan</b>
-          peluang 1% akan sakit. Gunanya menentukan ke mana regu berangkat duluan.
+          <b>Ini urutan kunjungan, bukan ramalan.</b> “Tinggi” berarti sawit itu lebih
+          mendesak diperiksa dibanding sawit lain <b>di foto yang sama</b> — bukan
+          pernyataan bahwa ia akan sakit. Tingkatnya juga tidak bisa dibandingkan
+          antar-foto. Gunanya satu: menentukan ke mana regu berangkat duluan.
         </div>
       </div>
     </div>
@@ -619,35 +676,50 @@ function Evidence({ d }) {
 
 
 /* ------------------------------------------------- dialog syarat foto ----
-   Muncul SEKALI setelah analisis, dan HANYA kalau ada butir yang tidak lolos.
-   Foto tetap diproses di belakangnya - dialog ini menerangkan apa yang membuat
-   hasilnya kurang bisa dipercaya, bukan menghalangi. */
-function SyaratDialog({ checks, onClose }) {
-  const gagal = (checks || []).filter(c => !c.ok);
-  if (!gagal.length) return null;
+   Muncul setelah analisis, HANYA kalau ada syarat foto yang tidak lolos, dan
+   muncul di atas layar UNGGAH - bukan layar Hasil. Analisisnya sendiri sudah
+   terlanjur jalan (syaratnya diukur dari hasil deteksi), tetapi mendaratkan
+   pengguna di Hasil akan menyiratkan angkanya layak dipakai.
+
+   `berat` menentukan pilihannya. Gagal berat = tidak ada peringkat sama sekali,
+   jadi tidak ada yang bisa dilihat. Gagal ringan = peringkatnya ada tapi daftar
+   pohonnya belum tentu lengkap, jadi pengguna boleh memilih tetap melihatnya. */
+function SyaratDialog({ checks, adaHasil, onClose, onTetap }) {
+  const semua = (checks || []).filter(c => !c.ok);
+  const syarat = semua.filter(c => c.syarat_foto);
+  if (!syarat.length) return null;
+  const berat = syarat.some(c => c.berat);
   return <div className="modal-bg" onClick={onClose}>
     <div className="modal" onClick={e => e.stopPropagation()}>
       <div className="modal-h">
         <div>
           <div style={{ font: "600 18px var(--font-display)" }}>
-            Foto ini {gagal.length > 1 ? "belum memenuhi beberapa syarat" : "punya satu catatan"}
+            {berat ? "Foto ini belum bisa dibaca" : "Foto ini di luar rentang yang diuji"}
           </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
-            Hasilnya tetap ditampilkan, tapi baca ini dulu.
+            {berat
+              ? "Tidak ada daftar prioritas yang bisa dibuat dari foto ini."
+              : "Peringkatnya bisa dibuat, tapi keandalannya berkurang."}
           </div>
         </div>
         <button className="modal-x" onClick={onClose} aria-label="Tutup">✕</button>
       </div>
-      {gagal.map((c, i) => <div className="modal-r" key={i}>
+      {semua.map((c, i) => <div className="modal-r" key={i}>
         <div className="modal-rh">
           <b>{c.judul}</b>
-          <span className="yn yn-no">{c.punyamu}</span>
+          <span className={"yn " + (c.syarat_foto ? "yn-ya" : "yn-no")}>{c.punyamu}</span>
         </div>
         <div className="fine">Dibutuhkan: {c.syarat}</div>
         <div className="modal-s">{c.saran}</div>
       </div>)}
       <div className="modal-f">
-        <button className="btn btn-primary btn-sm" onClick={onClose}>Mengerti</button>
+        {!berat && adaHasil &&
+          <button className="btn btn-ghost btn-sm" onClick={onTetap}>
+            Tetap lihat hasilnya
+          </button>}
+        <button className="btn btn-primary btn-sm" onClick={onClose}>
+          Pilih foto lain
+        </button>
       </div>
     </div>
   </div>;
@@ -682,19 +754,30 @@ function App() {
       const r = await fetch("/api/analyze", { method: "POST", body: fd });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const j = await r.json();
-      clearInterval(tick); setData(j); setScreen("res");
+      clearInterval(tick); setData(j);
       // Hanya SYARAT foto yang memicu dialog. Butir informatif (mis. tidak ada
       // tajuk bergejala) ikut ditampilkan kalau dialognya terlanjur terbuka, tapi
       // tidak pernah memunculkannya sendiri - petak sehat bukan foto yang cacat.
-      setSyarat((j.checks || []).some(c => !c.ok && c.syarat_foto) ? j.checks : null);
+      //
+      // KENAPA LAYAR PROSES TETAP LEWAT. Syaratnya diukur DARI hasil deteksi -
+      // jumlah sawit dan jarak tanam tidak bisa diketahui dari berkas mentah, jadi
+      // detektor harus jalan lebih dulu. Yang bisa dijamin adalah ia tidak MENDARAT
+      // di layar Hasil: kalau ada syarat yang gagal, kita kembali ke Unggah dan
+      // dialognya muncul di sana.
+      const gagal = (j.checks || []).filter(c => !c.ok && c.syarat_foto);
+      setSyarat(gagal.length ? j.checks : null);
+      setScreen(gagal.length ? "upload" : "res");
     } catch (e) { clearInterval(tick); setErr(String(e)); setScreen("upload"); }
   };
 
   const step = screen === "upload" ? 0 : screen === "proc" ? 1 : 2;
   return <React.Fragment>
     <AppBar step={step} view={view} onView={setView} />
-    {view === "app" && screen === "res" && syarat &&
-      <SyaratDialog checks={syarat} onClose={() => setSyarat(null)} />}
+    {view === "app" && syarat && <SyaratDialog
+      checks={syarat}
+      adaHasil={!!(data && data.risk)}
+      onClose={() => setSyarat(null)}
+      onTetap={() => { setSyarat(null); setScreen("res"); }} />}
     {err && <div className="page"><div className="note note-warn">Gagal: {err}</div></div>}
     {view === "bukti" ? <Evidence d={eg} /> : <React.Fragment>
       {screen === "upload" && <Upload samples={samples} onRun={run} />}
