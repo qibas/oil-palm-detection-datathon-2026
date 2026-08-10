@@ -239,8 +239,37 @@ app = Starlette(routes=[
 ])
 
 
+def _banner_bobot():
+    """Cetak bobot detektor yang BENAR-BENAR dipakai, sebelum server menerima
+    permintaan pertama.
+
+    Demo dapat berjalan dengan bobot yang berbeda dari yang menghasilkan angka
+    naskah (lihat TAG_ORDER di layer1_build/detect_centres.py). Perbedaan itu sah,
+    tetapi tidak boleh senyap: tanpa banner ini tangkapan layar demo dan tabel
+    naskah bisa dikira berasal dari detektor yang sama.
+    """
+    import sys
+    sys.path.insert(0, os.path.join(ROOT, "layer1_build"))
+    import detect_centres as dc
+
+    w = dc.weights_for("fold0")
+    if w is None:
+        print("  BOBOT DETEKTOR TIDAK DITEMUKAN — layar 1 dan 2 akan gagal.")
+        print("  Jalankan layer1_build/run_1fold_yolov12n.ipynb atau train_folds_gpu.py.")
+        return
+    tag = os.path.basename(os.path.dirname(os.path.dirname(w)))
+    print("  detektor : %s" % os.path.relpath(w, ROOT))
+    if "_1fold_" in tag:
+        print("  CATATAN  : bobot lari VERIFIKASI 1 lipatan, bukan lari 3 lipatan")
+        print("             yang menghasilkan Tabel 1 dan 2 naskah. Metrik pusat")
+        print("             lebih baik, kelas Unhealthy lebih buruk (AP50 0,426")
+        print("             lawan 0,475). Angka performa JANGAN dikutip dari demo.")
+        print("             Kembali ke bobot naskah: L1_TAG=yolo12n_base")
+
+
 if __name__ == "__main__":
     import uvicorn
     print("Prediksi Pohon Berisiko  ->  http://localhost:8000")
     print("  React + Babel di-vendor lokal; demo ini tidak butuh internet.")
+    _banner_bobot()
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")

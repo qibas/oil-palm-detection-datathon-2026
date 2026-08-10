@@ -1,0 +1,111 @@
+{
+  "tag": "yolo12n_base_1fold",
+  "fold": "fold0",
+  "ortho": "44000_16000",
+  "seed": 42,
+  "setting": {
+    "model": "yolo12n.pt",
+    "epochs": 30,
+    "imgsz": 640,
+    "arm": "base",
+    "batch": null,
+    "cache": "ram",
+    "workers": 0
+  },
+  "n_folds": 1,
+  "n_seeds": 1,
+  "conf": 0.75,
+  "conf_selection": "DIWARISI dari lari 3 lipatan (yang memilihnya silang-lipatan). TIDAK dipilih di sini: dengan satu lipatan, memilih ambang berarti menyetelnya di atas ortomosaik uji.",
+  "detection": {
+    "map50": 0.7017898120039552,
+    "map": 0.4836655991220318,
+    "mp": 0.7350766026373614,
+    "mr": 0.6838962408597233
+  },
+  "ap50": {
+    "Healthy": 0.9780761871741634,
+    "Unhealthy": 0.4255034368337468
+  },
+  "centre": {
+    "n_pred": 1409,
+    "n_gt": 1379,
+    "tp": 1367,
+    "fp": 42,
+    "fn": 12,
+    "precision": 0.9701916252661462,
+    "recall": 0.9912980420594634,
+    "f1": 0.9806312769010043,
+    "rmse_px": 5.2653780613155785,
+    "rmse_frac_spacing": 0.0497659224780873
+  },
+  "spacing_px": 105.80288275845795,
+  "degree": {
+    "r_graph": 1.5,
+    "gt_all": 5.524292965917331,
+    "gt_inner": 5.681964573268921,
+    "n_inner_gt": 1242,
+    "pred_all": 5.479063165365507,
+    "pred_inner": 5.61449498843485,
+    "n_inner_pred": 1297,
+    "layer2_inner": 5.74
+  },
+  "conf_curve": {
+    "0.25": {
+      "n_pred": 1595,
+      "precision": 0.8639498432601881,
+      "recall": 0.9992748368382887,
+      "f1": 0.9266980497646268,
+      "rmse_frac_spacing": 0.05139284968011503
+    },
+    "0.35": {
+      "n_pred": 1526,
+      "precision": 0.9003931847968545,
+      "recall": 0.9963741841914431,
+      "f1": 0.9459552495697074,
+      "rmse_frac_spacing": 0.04980555317757796
+    },
+    "0.45": {
+      "n_pred": 1494,
+      "precision": 0.9190093708165997,
+      "recall": 0.9956490210297317,
+      "f1": 0.9557953358858337,
+      "rmse_frac_spacing": 0.04978632545602272
+    },
+    "0.55": {
+      "n_pred": 1465,
+      "precision": 0.9358361774744027,
+      "recall": 0.994198694706309,
+      "f1": 0.9641350210970464,
+      "rmse_frac_spacing": 0.04977272971100446
+    },
+    "0.65": {
+      "n_pred": 1433,
+      "precision": 0.9560362875087229,
+      "recall": 0.9934735315445975,
+      "f1": 0.9743954480796586,
+      "rmse_frac_spacing": 0.04979055887180983
+    },
+    "0.75": {
+      "n_pred": 1409,
+      "precision": 0.9701916252661462,
+      "recall": 0.9912980420594634,
+      "f1": 0.9806312769010043,
+      "rmse_frac_spacing": 0.0497659224780873
+    },
+    "0.85": {
+      "n_pred": 1374,
+      "precision": 0.9890829694323144,
+      "recall": 0.9854967367657723,
+      "f1": 0.9872865964402471,
+      "rmse_frac_spacing": 0.04971921162847936
+    }
+  },
+  "batas": [
+    "1 lipatan, 1 seed - TIDAK ada mean +/- std.",
+    "paired() TIDAK berlaku: tidak ada pasangan (lipatan, seed).",
+    "JANGAN diadu dengan F1 pusat 0,960 +/- 0,024 milik lari 3 lipatan.",
+    "JANGAN masuk 00_RINGKASAN.csv maupun 00_ANGKA_FINAL.md.",
+    "Bukan replikasi. Ini lari verifikasi pipeline di satu mesin.",
+    "Perbandingan yang sah hanya lipatan-lawan-lipatan-yang-sama."
+  ]
+}

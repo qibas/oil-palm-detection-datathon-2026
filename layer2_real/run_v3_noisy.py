@@ -61,23 +61,57 @@ H, EPOCHS, DEVICE = V3.H, V3.EPOCHS, R.DEVICE
 COL = 0                                     # is_sympt
 
 
+CEN = os.path.join(os.path.dirname(HERE), "layer1_build", "yolo12_results",
+                   "centre_eval.json")
+TAU_RETAINED = 0.75      # ambang yang DIPERTAHANKAN - lihat catatan di bawah
+
+
 def detector_rates():
-    """Recall/FPR kelas Unhealthy. Dari pengukuran ds_B kalau ada, kalau tidak default."""
+    """Recall/FPR kelas Unhealthy pada ds_B. -> (recall, fpr, sumber).
+
+    DUA KOREKSI, keduanya pernah membuat jalur default modul ini menghasilkan
+    angka yang sama sekali berbeda dari yang diterbitkan.
+
+    1. AMBANG. Versi sebelumnya membaca `tau_unhealthy` dari
+       `unhealthy_threshold.json`, yaitu 0,85 - ambang hasil pemilihan
+       silang-lipatan yang justru DITOLAK oleh eksperimennya sendiri (F1 0,370
+       lawan 0,406; optimum per lipatan melompat 0,85/0,55/0,85 karena letaknya
+       derau). Yang dipertahankan paket ini adalah ambang lokalisasi **0,75**.
+       Memakai 0,85 memberi recall 0,383, bukan 0,446 yang diterbitkan.
+
+    2. PENYEBUT FPR. Versi sebelumnya menghitung `FP / (TP+FP+FN)` - itu bukan
+       laju positif palsu, melainkan pangsa FP di dalam matriks kebingungan yang
+       hanya berisi ~112 pohon. Hasilnya 0,41 pada tau 0,75: dua puluh kali lipat
+       terlalu besar, dan pada laju itu seperlima kebun dilaporkan bergejala.
+       Laju yang benar adalah `FP / JUMLAH NEGATIF` = 46 / 5.011 = 0,0092.
+
+    Angka terbitan (recall 0,446 / fpr 0,0094) selama ini benar karena selalu
+    dilewatkan lewat env (`RECALL=0.446 FPR=0.0094`, lihat README). Yang rusak
+    adalah jalur default `python run_v3_noisy.py` - yakni bentuk pemanggilan yang
+    justru tertulis di baris pertama docstring modul ini.
+    """
     rec = os.environ.get("RECALL")
     fpr = os.environ.get("FPR")
     if rec and fpr:
         return float(rec), float(fpr), "env"
     if os.path.isfile(THR):
         d = json.load(open(THR))
-        tau = str(d["tau_unhealthy"])
-        Ps, Rs, N, FP = [], [], 0, 0
+        tau = str(TAU_RETAINED)
+        # jumlah pohon unik per lipatan -> untuk penyebut FPR yang benar
+        n_gt = {}
+        if os.path.isfile(CEN):
+            n_gt = {f: r["n_gt"] for f, r in json.load(open(CEN))["folds"].items()}
+        Rs, FP, NEG = [], 0, 0
         for f, c in d["curves"].items():
-            if tau in c:
-                Ps.append(c[tau]["P"]); Rs.append(c[tau]["R"])
-                N += c[tau]["TP"] + c[tau]["FP"] + c[tau]["FN"]
-                FP += c[tau]["FP"]
-        if Rs:
-            return float(np.mean(Rs)), float(FP) / max(1, N), "ds_B tau=%s" % tau
+            if tau not in c:
+                continue
+            Rs.append(c[tau]["R"])
+            FP += c[tau]["FP"]
+            pos = c[tau]["TP"] + c[tau]["FN"]
+            NEG += max(0, n_gt.get(f, 0) - pos)
+        if Rs and NEG:
+            return (float(np.mean(Rs)), float(FP) / NEG,
+                    "ds_B tau=%s (ambang dipertahankan)" % tau)
     return 0.50, 0.005, "default (pengukuran ds_B belum ada)"
 
 

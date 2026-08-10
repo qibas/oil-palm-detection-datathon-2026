@@ -46,8 +46,12 @@ sys.path.insert(0, BASE)
 import y12  # noqa: E402
 
 SEED = int(os.environ.get("SEED", 42))
-# TAG bisa diganti lewat env supaya lengan lain bisa dinilai dengan harness yang
-# SAMA PERSIS - termasuk pemilihan ambang silang-lipatan. Default tetap garis dasar.
+# TAG dapat ditimpa lewat env supaya varian lain dinilai oleh KODE YANG SAMA,
+# bukan salinannya - termasuk pemilihan ambang silang-lipatan, yang paling mudah
+# menyimpang kalau diduplikasi. Dua pemakaiannya sejauh ini:
+#   yolo12n_base_1fold   lari verifikasi satu lipatan (run_1fold_yolov12n.ipynb)
+#   yolo12n_base_i1024   lengan kandidat imgsz 1024 (run_arms_gpu.py)
+# Default tetap lari 3 lipatan, yaitu yang angkanya masuk naskah.
 TAG = os.environ.get("TAG", "yolo12n_base")
 IMGSZ = int(os.environ.get("IMGSZ", 640))
 RADIUS_FRAC = 0.5          # ambang cocok, kelipatan jarak tanam
@@ -57,8 +61,8 @@ CONFS = [float(x) for x in os.environ.get(
 FOLDS = [f"fold{int(x)}" for x in os.environ.get("FOLDS", "0,1,2").split(",")]
 
 
-def weights_of(fold):
-    p = os.path.join(y12.RUNS, f"{TAG}_{fold}_s{SEED}", "weights", "best.pt")
+def weights_of(fold, tag=None):
+    p = os.path.join(y12.RUNS, f"{tag or TAG}_{fold}_s{SEED}", "weights", "best.pt")
     return p if os.path.isfile(p) else None
 
 

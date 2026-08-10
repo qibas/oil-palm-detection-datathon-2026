@@ -52,6 +52,17 @@ V3_FACTS = {
     "perm_strict": (0.0244, 6.04, "0/200"),
     "kinship_pct": 36,
     "signal_kept_pct": 59,
+    # ⚠ TIGA ANGKA DI BAWAH TIDAK PUNYA SUMBER. Berbeda dari setiap angka lain di
+    # berkas ini, ketiganya TIDAK ada di 00_RINGKASAN.csv dan tidak ada satu pun
+    # skrip di paket ini yang menghitung presisi@k. Ketiganya juga tidak konsisten
+    # sendiri: 15,8 / 8,8 = 1,80x, bukan 1,81x.
+    #
+    # 00_ANGKA_FINAL.md sudah menurunkan barisnya jadi "JANGAN DIKUTIP". Angkanya
+    # dibiarkan di sini supaya layar demo tidak berubah diam-diam, TETAPI ia tidak
+    # boleh masuk naskah, dan kalau layar itu ditinjau ulang inilah yang pertama
+    # harus dicabut. Perbaikan yang benar: hitung presisi@5% teratas secara
+    # block-CV (leave-one-parcel-out) di run_v3.py, tulis barisnya ke
+    # 00_RINGKASAN.csv, lalu baca dari sana.
     "lift_top5": 1.81,
     "per_case_model": 8.8,
     "per_case_random": 15.8,

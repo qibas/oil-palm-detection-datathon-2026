@@ -111,6 +111,12 @@ python unhealthy_threshold.py         # ambang kelas Unhealthy (hasil: TETAP 0,7
 python detect_centres.py <citra>      # citra apa pun -> pusat tajuk + graf
 # jalur YOLO11 lama (yolo_prep.py / yolo_train.py) masih ada tapi DIGANTIKAN oleh y12.py
 
+# Lari VERIFIKASI satu lipatan (~20 mnt, 1 GPU) - buka run_1fold_yolov12n.ipynb.
+# Setelan identik (yolo12n, 30 epoch, imgsz 640, seed 42), ruang nama terpisah
+# (`_1fold`), jadi ia tidak dapat menimpa hasil atau bobot 3 lipatan.
+# 1 lipatan = TANPA std: angkanya BUKAN angka naskah dan tidak boleh diadu
+# dengan F1 pusat 0,960 +/- 0,024. Lihat kotak batas di sel pertama notebook.
+
 # 3. Lapisan 2 — Eg9PP  (CPU; total ~24 mnt)
 cd ../layer2_real
 python test_dataset.py         # ~90 asersi + 4 penjaga kebocoran  (~10 dtk)
@@ -154,7 +160,8 @@ Berkas yang WAJIB ada agar demo jalan — pastikan ikut ter-commit:
 |---|---|
 | `layer2_real/stgnn_v3_photo.pt` | checkpoint Lapisan 2 varian foto (54 KB) |
 | `layer2_real/risk_ranked.csv` | peringkat Eg9PP untuk layar Bukti |
-| `layer1_build/yolo12_runs/yolo12n_base_fold*/weights/best.pt` | bobot detektor |
+| `layer1_build/yolo12_runs/yolo12n_base_fold*/weights/best.pt` | bobot detektor (lari 3 lipatan; angka naskah) |
+| `layer1_build/yolo12_runs/yolo12n_base_1fold_fold0_s42/weights/best.pt` | bobot yang DIPAKAI demo lebih dahulu; tanpa berkas ini demo jatuh ke bobot 3 lipatan dan tetap jalan |
 | `web/vendor/*.js` | React, ReactDOM, Babel (3,2 MB) |
 | `data_clean/*.csv` | dataset beku |
 

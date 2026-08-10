@@ -62,47 +62,121 @@ def main():
     W("**DEMO** menandai apakah angka itu benar-benar terlihat di aplikasi. Paper ")
     W("tidak boleh mengutip angka yang konfigurasinya berbeda dari yang dijalankan demo ")
     W("tanpa menyebut perbedaannya.\n")
+    # Tabel keputusan ini DULU deretan literal yang diketik tangan, sementara
+    # docstring modul ini menjanjikan berkas yang "mustahil melenceng dari angka
+    # sumbernya". Janji itu berlaku untuk bagian A-F, yang memang membaca CSV -
+    # tetapi TIDAK untuk tabel ini, justru satu-satunya tabel yang menentukan
+    # angka mana boleh masuk naskah. Sekarang ia diturunkan seperti yang lain.
+    #
+    # Lift TIDAK PERNAH diketik: ia selalu mean / garis tanpa-skill.
+    V3, COLS = "v3 foto-tunggal h=3", "v3 ablasi kolom h=3"
+
+    def _r(exp, item):
+        r = get(rs, exp, item)
+        if r is None:
+            raise SystemExit("baris hilang di 00_RINGKASAN.csv: %r / %r" % (exp, item))
+        return r
+
+    def mean(exp, item):
+        return float(_r(exp, item)["mean"])
+
+    def num(exp, item, d=4, signed=False):
+        m = mean(exp, item)
+        return ("%+.*f" % (d, m) if signed else "%.*f" % (d, m)).replace(".", ",")
+
+    def pm(exp, item, d=3):
+        r = _r(exp, item)
+        return ("%.*f ± %.*f" % (d, float(r["mean"]), d, float(r["std"]))).replace(".", ",")
+
+    def d_sign(exp, item):
+        """Selisih + sign-count, mis. '+0,0151 (39/40)'."""
+        return "%s (%s)" % (num(exp, item, signed=True), _r(exp, item)["sign"] or "—")
+
+    NOSKILL = mean(V3, "AP dalam-sensus foto tanpa graf")
+
+    def lift(exp, item):
+        return ("%.2f" % (mean(exp, item) / NOSKILL)).replace(".", ",")
+
+    def ap_lift(exp, item):
+        return "%s → lift **%s×**" % (num(exp, item), lift(exp, item))
+
+    # Bagian spasial = kelebihan pada strata TERKETAT dibagi seluruh sinyal di
+    # atas garis tanpa-graf. Sisanya kekerabatan.
+    _strict = mean("v3 null dalam-famili h=3", "kelebihan vs null progeny+parcel")
+    _obs = mean(V3, "AP dalam-sensus foto graf BENAR")
+    spatial_pct = "%.0f" % (100 * _strict / (_obs - NOSKILL))
+    blk_lift = ("%.2f" % (mean("agregasi blok h=3", "tangkapan top5 blok model")
+                          / mean("agregasi blok h=3", "tangkapan top5 blok acak"))).replace(".", ",")
+
+    # SATU-SATUNYA baris yang tidak dapat diturunkan. Tidak ada barisnya di
+    # 00_RINGKASAN.csv dan TIDAK ADA KODE di paket ini yang menghitung presisi@k.
+    # Nilainya dipertahankan - menghapusnya akan menyembunyikan bahwa ia pernah
+    # diklaim - tetapi statusnya diturunkan dari UTAMA, supaya ia tidak masuk
+    # naskah sebelum ada yang menghasilkannya. Salinan keduanya di demo_core.py
+    # (per_case_model 8,8 / per_case_random 15,8) memberi 1,80x, bukan 1,81x:
+    # kedua salinan itu bahkan tidak sepakat satu sama lain.
+    UNSOURCED_PREC_AT_K = "1 kasus per **8,8** pohon, **1,81×**"
+
     W("| Angka | Nilai | Jalur | Kolom | W | h | Metrik | PAPER | DEMO |")
     W("|---|---|---|---|---|---|---|---|---|")
     for row in [
-        ("STRUKTUR true−random", "+0,0151 (39/40)", "Eg9PP", "24", "3", "3",
-         "AP gabungan", "**UTAMA**", "tidak"),
-        ("STRUKTUR true−random", "+0,0165 (39/40)", "Eg9PP", "24", "3", "**4**",
-         "AP gabungan", "pendukung", "tidak"),
-        ("STRUKTUR foto true−random", "+0,0296 (40/40)", "foto", "6", "1", "3",
+        ("STRUKTUR true−random", d_sign("dekomposisi+tangga h=3", "STRUKTUR vs random GLOBAL"),
+         "Eg9PP", "24", "3", "3", "AP gabungan", "**UTAMA**", "tidak"),
+        ("STRUKTUR true−random", d_sign("dekomposisi+tangga h=4", "STRUKTUR vs random GLOBAL"),
+         "Eg9PP", "24", "3", "**4**", "AP gabungan", "pendukung", "tidak"),
+        ("STRUKTUR foto true−random",
+         d_sign(V3, "AP(foto graf benar) - AP(graf acak), dalam-sensus"),
+         "foto", "6", "1", "3", "AP dalam-sensus", "**UTAMA**", "tidak"),
+        ("foto − penuh", d_sign(V3, "AP(foto) - AP(penuh), dalam-sensus"),
+         "foto vs Eg9PP", "6 vs 24", "1 vs 3", "3",
          "AP dalam-sensus", "**UTAMA**", "tidak"),
-        ("foto − penuh", "+0,0042 (36/40)", "foto vs Eg9PP", "6 vs 24", "1 vs 3", "3",
-         "AP dalam-sensus", "**UTAMA**", "tidak"),
-        ("AP foto 6 kolom", "0,1015 → lift **1,61×**", "foto", "6", "1", "3",
+        ("AP foto 6 kolom", ap_lift(COLS, "AP 6 kolom + selisih"), "foto", "6", "1", "3",
          "AP dalam-sensus", "pendukung", "tidak"),
-        ("AP foto 1 kolom", "0,0916 → lift **1,45×**", "foto", "**1**", "1", "3",
+        ("AP foto 1 kolom", ap_lift(COLS, "AP 1 kolom is_sympt"), "foto", "**1**", "1", "3",
          "AP dalam-sensus", "**UTAMA**", "**YA — ini yang dijalankan demo**"),
-        ("AP foto 1 kolom + derau detektor", "0,0800 → lift **1,27×**", "foto", "1", "1", "3",
-         "AP dalam-sensus", "**UTAMA**", "**YA — ujung-ke-ujung**"),
-        ("nilai kelas MATI", "+0,0046 (20/20)", "foto", "2−1", "1", "3",
+        ("AP foto 1 kolom + derau detektor",
+         ap_lift("v3 ujung-ke-ujung h=3", "AP dalam-sensus masukan DETEKTOR"),
+         "foto", "1", "1", "3", "AP dalam-sensus", "**UTAMA**", "**YA — ujung-ke-ujung**"),
+        ("nilai kelas MATI", d_sign(COLS, "NILAI KELAS MATI (2-1 kolom)"), "foto", "2−1", "1", "3",
          "AP dalam-sensus", "pendukung", "tidak (butuh kelas baru)"),
-        ("null dalam-famili+petak", "0/200, 64% spasial", "foto", "6", "1", "3",
-         "AP dalam-sensus", "**UTAMA**", "disebut di kotak batas"),
-        ("presisi@5% teratas", "1 kasus per **8,8** pohon, **1,81×**", "Eg9PP", "6", "1", "3",
-         "presisi@k", "**UTAMA**", "tidak"),
-        ("F1 pusat tajuk", "0,960 ± 0,024", "Lapisan 1", "—", "—", "—",
-         "F1 pusat", "**UTAMA**", "ya"),
-        ("derajat jembatan", "5,54 ± 0,12 vs 5,74", "Lapisan 1 vs 2", "—", "—", "—",
-         "derajat @1,5×", "**UTAMA**", "ya"),
-        ("agregasi blok", "lift 1,24× < pohon 1,61×", "Eg9PP", "6", "1", "3",
-         "tangkapan top5", "**UTAMA (negatif)**", "tidak"),
-        ("mAP50 Peru (PalmAnom/PalmSan)", "0,9495", "Peru", "—", "—", "—",
-         "mAP50", "pendukung — **1 lipatan**", "tidak"),
+        ("null dalam-famili+petak",
+         "%s, %s%% spasial" % (_r("v3 null dalam-famili h=3",
+                                  "kelebihan vs null progeny+parcel")["sign"], spatial_pct),
+         "foto", "6", "1", "3", "AP dalam-sensus", "**UTAMA**", "disebut di kotak batas"),
+        ("presisi@5% teratas", UNSOURCED_PREC_AT_K, "Eg9PP", "6", "1", "3",
+         "presisi@k", "⚠ **JANGAN DIKUTIP** — tanpa sumber", "tidak"),
+        ("F1 pusat tajuk", pm("demonstrator", "F1 pusat tajuk (METRIK UTAMA)"),
+         "Lapisan 1", "—", "—", "—", "F1 pusat", "**UTAMA**", "ya"),
+        ("derajat jembatan",
+         "%s vs %s" % (pm("uji lebar sepur", "derajat @1.5x L1 (prediksi detektor)", 2),
+                       num("uji lebar sepur", "derajat @1.5x L2", 2)),
+         "Lapisan 1 vs 2", "—", "—", "—", "derajat @1,5×", "**UTAMA**", "ya"),
+        ("agregasi blok",
+         "lift %s× < pohon %s×" % (blk_lift, lift(COLS, "AP 6 kolom + selisih")),
+         "Eg9PP", "6", "1", "3", "tangkapan top5", "**UTAMA (negatif)**", "tidak"),
+        ("mAP50 Peru (PalmAnom/PalmSan)", num("jalur bukti ketiga", "mAP50 gabungan"),
+         "Peru", "—", "—", "—", "mAP50", "pendukung — **1 lipatan**", "tidak"),
         ("keluaran demo apa pun", "—", "foto", "1", "1", "3",
          "—", "**JANGAN DIKUTIP**", "ya"),
     ]:
         W("| " + " | ".join(row) + " |")
     W("")
-    W("**Yang harus dinyatakan di paper:** angka utama struktur (+0,0151 dan +0,0296) ")
+    W("**Yang harus dinyatakan di paper:** angka utama struktur (%s dan %s) "
+      % (num("dekomposisi+tangga h=3", "STRUKTUR vs random GLOBAL", signed=True),
+         num(V3, "AP(foto graf benar) - AP(graf acak), dalam-sensus", signed=True)))
     W("diukur pada konfigurasi **6 dan 24 kolom**, sedangkan demo menjalankan varian ")
     W("**1 kolom** — satu-satunya yang bisa diberi makan satu foto. Angka demo yang sah ")
-    W("adalah **1,45×** (masukan bersih) dan **1,27×** (lewat detektor). Menyebut 1,61× ")
+    W("adalah **%s×** (masukan bersih) dan **%s×** (lewat detektor). Menyebut %s× "
+      % (lift(COLS, "AP 1 kolom is_sympt"),
+         lift("v3 ujung-ke-ujung h=3", "AP dalam-sensus masukan DETEKTOR"),
+         lift(COLS, "AP 6 kolom + selisih")))
     W("sambil menunjuk layar demo adalah salah kutip.\n")
+    W("⚠ **Baris `presisi@5% teratas` tidak punya sumber.** Ia tidak ada di ")
+    W("`00_RINGKASAN.csv`, dan tidak ada satu pun skrip di paket ini yang menghitung ")
+    W("presisi@k — nilainya hanya pernah diketik tangan di dua tempat, dan kedua ")
+    W("salinan itu tidak sepakat (`demo_core.py` memberi 1,80×, tabel ini 1,81×). ")
+    W("Sampai ada kode yang menghasilkannya beserta barisnya di CSV, ia **tidak boleh ")
+    W("masuk naskah**. Setiap baris lain di tabel ini diturunkan dari CSV.\n")
 
     # ---------------------------------------------------------------- A
     W("## A · Lapisan 1 — penginderaan dan uji jembatan\n")

@@ -10,6 +10,16 @@ __pycache__/
 layer1_build/yolo12/
 layer1_build/yolo12_1c/
 
+# CATATAN: bobot lari 1-lipatan DULU diabaikan di sini, tetapi demo kini
+# memakainya lebih dahulu (lihat TAG_ORDER di layer1_build/detect_centres.py),
+# sehingga ia menjadi aset demo dan WAJIB ikut ter-commit. Yang tetap tidak
+# perlu dilacak hanyalah keluaran sampingan larinya.
+layer1_build/yolo12_runs/*_1fold_*/*.jpg
+layer1_build/yolo12_runs/*_1fold_*/*.png
+# `last.pt` tidak dipakai siapa pun - demo memuat `best.pt`. Dir 3-lipatan
+# terlanjur menyertakannya; untuk lari baru tidak ada alasan menambah 5,5 MB.
+layer1_build/yolo12_runs/*_1fold_*/weights/last.pt
+
 # Cache pemindaian label Ultralytics
 *.cache
 

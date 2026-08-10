@@ -134,7 +134,10 @@ F1 yang **datar** terhadap radius berarti pusatnya memang tepat, sedangkan kurva
 
 ## Angkanya, setelah metrik ini dijalankan
 
-`centre_eval_folds.py`, YOLOv12n, 3 lipatan × 30 epoch, satu lingkungan. Ambang keyakinan
+`centre_eval_folds.py`, YOLOv12n, 3 lipatan × 30 epoch. ⚠ Ketiganya **bukan** satu
+lingkungan — `fold1` berasal dari lingkungan berbeda (tanpa `args.yaml`, log epoch mulai
+dari 2), sehingga ±std di bawah memuat ragam lingkungan selain ragam antar-situs. Besarnya
+terukur di `00_HASIL.md` Bagian 4, baris "Lingkungan pelatihan". Ambang keyakinan
 dipilih **silang-lipatan** — ambang untuk lipatan *f* diambil dari kurva lipatan lain saja,
 sehingga ortomosaik yang ditahan tidak pernah ikut memilih apa pun tentang dirinya sendiri.
 Ketiganya sepakat di conf 0,75, dan sapuan sampai 0,90 menunjukkan itu optimum **interior**,

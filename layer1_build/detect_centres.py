@@ -103,9 +103,41 @@ def images_in(path):
     return out
 
 
-def weights_for(fold):
-    p = os.path.join(y12.RUNS, f"yolo12n_base_{fold}_s42", "weights", "best.pt")
-    return p if os.path.isfile(p) else None
+# Tag bobot detektor, terurut menurut prioritas. Yang pertama ada dipakai.
+#
+#   yolo12n_base_1fold  lari 30 epoch di lingkungan saat ini (run_1fold_yolov12n.ipynb)
+#   yolo12n_base        lari 3 lipatan; ANGKA INILAH yang dilaporkan di naskah
+#
+# Mengapa yang pertama didahulukan untuk DEMO, dan mengapa itu bukan berarti
+# angka naskah berubah. Diukur pada lipatan yang sama, bobot 1-lipatan lebih baik
+# pada metrik yang dipakai layar 1 dan 2 (F1 pusat 0,981 lawan 0,970; presisi
+# 0,970 lawan 0,949) tetapi LEBIH BURUK pada kelas Unhealthy (AP50 0,426 lawan
+# 0,475) yang mengisi layar risiko. Pertukaran itu nyata dan sudah diukur, bukan
+# diasumsikan.
+#
+# Tabel 1 dan 2 di naskah tetap milik `yolo12n_base`. Karena itu bobot yang
+# benar-benar dipakai SELALU ikut dikembalikan ke pemanggil lewat `info["weights"]`
+# dan tampil di respons API, supaya keluaran demo tidak pernah dapat disalahkira
+# sebagai keluaran konfigurasi yang dilaporkan.
+#
+# Timpa dengan env: L1_TAG=yolo12n_base python demo_api.py
+TAG_ORDER = ([os.environ["L1_TAG"]] if os.environ.get("L1_TAG")
+             else ["yolo12n_base_1fold", "yolo12n_base"])
+
+
+def weights_for(fold, tag=None):
+    """Bobot detektor untuk satu lipatan. -> path, atau None bila tak satu pun ada.
+
+    Tanpa `tag`, TAG_ORDER ditelusuri berurutan sehingga lari verifikasi dipakai
+    bila tersedia dan lari 3 lipatan menjadi cadangan. Cadangan itu wajib ada:
+    lari 1-lipatan hanya melatih fold0, jadi permintaan fold1/fold2 harus tetap
+    terlayani, dan repositori hasil kloning bisa saja belum memuat bobot barunya.
+    """
+    for t in ([tag] if tag else TAG_ORDER):
+        p = os.path.join(y12.RUNS, f"{t}_{fold}_s42", "weights", "best.pt")
+        if os.path.isfile(p):
+            return p
+    return None
 
 
 def assert_classes(model, where=""):
