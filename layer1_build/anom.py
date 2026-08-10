@@ -212,7 +212,7 @@ def train_cv(model="yolo12n.pt", folds=None, epochs=100, imgsz=640, seeds=(42,),
     os.makedirs(RESDIR, exist_ok=True)
     folds = folds or [os.path.splitext(os.path.basename(p))[0]
                       for p in sorted(glob.glob(os.path.join(ROOT, "fold*.yaml")))]
-    dev = device if device is not None else (0 if torch.cuda.is_available() else "cpu")
+    dev = y12.pick_device(device)
     tag = tag or os.path.splitext(os.path.basename(model))[0]
     setting = dict(model=model, epochs=epochs, imgsz=imgsz, folds=list(folds),
                    seeds=list(seeds), over=dict(sorted(over.items())))
@@ -332,7 +332,7 @@ def controls(fold="fold0", epochs=15, seed=0, verbose=True):
 
     torch.manual_seed(seed)
     np.random.seed(seed)
-    dev = "cuda" if torch.cuda.is_available() else "cpu"
+    dev = "cuda" if y12.pick_device() != "cpu" else "cpu"
 
     rows = _rows()
     per = collections.defaultdict(list)

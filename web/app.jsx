@@ -104,7 +104,7 @@ const I_GEAR = '<circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14
 function AppBar({ step, view, onView }) {
   const S = ["Unggah", "Proses", "Hasil"];
   return <div className="appbar">
-    <div className="mark">Sawit<i>Guard</i></div>
+    <div className="mark">Prediksi <i>Pohon Berisiko</i></div>
     <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
       {view === "app" && <div className="stepper">
         {S.map((label, i) => <React.Fragment key={label}>
@@ -133,7 +133,7 @@ function Upload({ samples, onRun }) {
       Di mana tim kamu<br />harus melihat duluan?
     </h1>
     <p className="sec" style={{ margin: "14px 0 32px", maxWidth: 520 }}>
-      Unggah satu foto drone kebunmu. SawitGuard menemukan setiap sawit, membangun
+      Unggah satu foto drone kebunmu. Sistem menemukan setiap sawit, membangun
       graf kontak akarnya, lalu memeringkat sawit sehat mana yang paling berisiko
       tertular berikutnya.
     </p>
@@ -250,23 +250,31 @@ function Overlay({ src, w, h, mode, data, showGreys }) {
         cont ? rampColor(p.v) : QHEX[p.q - 1],
         (cont ? p.v > 0.8 : p.q === 5) ? 7 : 5.5));
 
-      // Nomor 10 teratas, supaya baris tabel bisa dirujuk ke titik di peta.
-      // Digambar SESUDAH semua titik agar tidak tertimpa tetangganya.
+      // Nomor untuk SETIAP sawit yang diperingkat, bukan hanya 10 teratas.
+      // Menomori sebagian justru membingungkan: pembaca bertanya kenapa titik ini
+      // punya nomor dan tetangganya tidak. Pada ubin khas ada ~90 sawit dengan
+      // jarak layar ~70 px, jadi lencana 15-17 px masih longgar.
       //
-      // Lencananya putih dengan teks gelap, bukan mewarisi warna pita: pita
-      // terendah (#EE9A87) terlalu terang untuk teks putih, dan pita tertinggi
-      // (#4F1315) terlalu gelap untuk teks gelap - satu gaya netral terbaca di
-      // atas keduanya sekaligus di atas citra apa pun.
-      const R = 8.5;
-      risk.points.filter(p => p.rank <= 10).forEach(p => {
-        const bx = Math.min(W - R - 1, Math.max(R + 1, p.x * W + 10));
-        const by = Math.min(H - R - 1, Math.max(R + 1, p.y * H - 10));
+      // Digambar SESUDAH semua titik agar tidak tertimpa tetangganya. Lencananya
+      // netral, bukan mewarisi warna pita: pita terendah (#EE9A87) terlalu terang
+      // untuk teks putih dan pita tertinggi (#4F1315) terlalu gelap untuk teks
+      // gelap - satu gaya netral terbaca di atas keduanya sekaligus di atas citra
+      // apa pun. Sepuluh teratas dibalik warnanya supaya tetap bisa dicari cepat
+      // saat mata berpindah dari tabel ke peta.
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      risk.points.forEach(p => {
+        const top = p.rank <= 10;
+        const R = top ? 8.5 : 7.5;
+        const bx = Math.min(W - R - 1, Math.max(R + 1, p.x * W + (top ? 10 : 9)));
+        const by = Math.min(H - R - 1, Math.max(R + 1, p.y * H - (top ? 10 : 9)));
         g.beginPath(); g.arc(bx, by, R, 0, 7);
-        g.fillStyle = "#fff"; g.fill();
-        g.lineWidth = 1.6; g.strokeStyle = INK; g.stroke();
-        g.fillStyle = INK;
-        g.font = '700 11px "Instrument Sans", system-ui, sans-serif';
-        g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillStyle = top ? INK : "rgba(255,255,255,.92)"; g.fill();
+        g.lineWidth = top ? 1.6 : 1.2;
+        g.strokeStyle = top ? "#fff" : INK; g.stroke();
+        g.fillStyle = top ? "#fff" : INK;
+        g.font = (top ? '700 11px ' : '600 10px ')
+          + '"Instrument Sans", system-ui, sans-serif';
         g.fillText(String(p.rank), bx, by + .5);
       });
     } else {
@@ -291,7 +299,15 @@ function Overlay({ src, w, h, mode, data, showGreys }) {
 function Results({ d, onReset }) {
   const [mode, setMode] = useState("risk");
   const [greys, setGreys] = useState(true);
-  const [soft, setSoft] = useState(true);
+  /* Mode kontinu MATI secara bawaan, dan itu disengaja.
+     Ia memakai keyakinan Unhealthy DI BAWAH ambang 0,75 - masukan di luar
+     distribusi latih, karena model dilatih pada status biner yang terverifikasi
+     lapangan. Dua akibatnya terlihat langsung di layar: tingkatnya bertambah
+     tanpa dasar terukur, dan kolom "ada sawit sakit di sekitarnya" jadi berbunyi
+     "Tidak" pada sawit yang tetap diperingkat tinggi - karena penggeraknya
+     tetangga berkeyakinan 0,3 yang tidak dihitung sakit. Tombolnya tetap ada
+     untuk pembaca teknis, tapi bukan yang pertama dilihat orang. */
+  const [soft, setSoft] = useState(false);
   const det = d.detect;
   const risk = (soft && d.risk_soft) ? d.risk_soft : d.risk;
   const ok = risk && !risk.degenerate;
@@ -302,7 +318,7 @@ function Results({ d, onReset }) {
       gap: 16, flexWrap: "wrap" }}>
       <div>
         <h1 style={{ font: "700 34px/1.1 var(--font-display)", letterSpacing: "-.02em" }}>
-          {ok ? "Peta risiko siap" : "Peta kontak siap"}
+          Peta risiko
         </h1>
         <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
           <span className="badge inverse">{det.n} sawit</span>
@@ -376,20 +392,8 @@ function Results({ d, onReset }) {
               </div>
             </div>
             <div className="legend">
-              <span className="lg-num">1</span>
-              <span>nomor 10 teratas — sama dengan nomor di daftar prioritas</span>
               <span>✕ sudah bergejala — jadi sumber penularan, tidak ikut diperingkat</span>
             </div>
-            {risk.mode !== "kontinu" && <div className="note note-soft" style={{ padding: 14 }}>
-              Pada foto ini sistem membedakan <b>{risk.n_tingkat} tingkat</b> risiko.
-              Yang dibacanya satu hal saja — <b>berapa sawit sakit yang bersentuhan</b> —
-              jadi sawit dengan jumlah yang sama menempati tingkat yang sama:
-              {" "}{(risk.bands || []).map((b, i) =>
-                <span key={b.q}>{i > 0 ? " · " : ""}
-                  <b>{b.nb_sick > 0 ? b.nb_sick + " sakit" : "tidak ada"}</b>
-                  {" → "}{b.n} sawit</span>)}.
-              {" "}Lebar pita di atas sebanding dengan jumlah sawitnya.
-            </div>}
           </React.Fragment> : <div className="legend">
             <span className="sw2"><i className="dot" style={{ background: GREEN }} />sehat</span>
             <span className="sw2"><i className="dot" style={{ background: DANGER }} />tidak sehat</span>
@@ -413,7 +417,7 @@ function Results({ d, onReset }) {
         di sini mengundang persis salah-baca itu. Rinciannya pindah ke expander,
         dengan keterangan bahwa angkanya dari lari tervalidasi, bukan dari layar ini. */}
     <div className="note note-soft">
-      SawitGuard menandai sawit yang <b>kondisinya terlihat buruk dari udara</b> —
+      Sistem menandai sawit yang <b>kondisinya terlihat buruk dari udara</b> —
       itu belum tentu Ganoderma. Peringkatnya untuk <b>memandu urutan pemeriksaan</b>,
       bukan menggantikan cek lapangan.
     </div>
@@ -490,22 +494,17 @@ function Results({ d, onReset }) {
               pada 5 teratas, lawan <b>{num(risk.nb_sick_all)}</b> pada seluruh sawit
               yang dinilai. Sistem membaca <b>keadaan tetangga</b>, bukan pohon itu sendiri.
             </div>
-            <div className="fine" style={{ marginTop: 8 }}>
-              Nomor 1–10 juga ditandai di peta. Nomor itu untuk mencari pohonnya —
-              di dalam tingkat yang sama urutannya <b>tidak berarti apa-apa</b>,
-              nomor 1 dan 5 sama mendesaknya.
-            </div>
           </div>
         </div> : <div className="card">
           <div style={{ font: "600 17px var(--font-display)", marginBottom: 10 }}>
             Belum ada peringkat</div>
           <div className="note note-warn">
-            {risk ? <React.Fragment>
-              <b>Tidak ada tajuk bergejala terdeteksi di citra ini.</b> Tanpa sumber
-              penularan, difusi graf nol di mana-mana dan seluruh skor identik —
-              peringkatnya tidak berarti apa pun, jadi tidak ditampilkan. Ini bukan
-              galat: ubin seluas ini rata-rata memang hanya memuat ~0,85 pohon sakit.
-            </React.Fragment> : "Graf tidak dapat dibangun dari citra ini."}
+            {/* Penjelasan panjangnya sengaja dibuang: pada petak yang seluruhnya
+                sehat, satu kalimat sudah cukup dan sisanya terbaca seperti
+                pembelaan. Fakta laju dasar (~0,85 sawit sakit per ubin) tetap
+                tercatat di 00_HASIL.md dan di expander batasan teknis. */}
+            {risk ? <b>Tidak ada tajuk bergejala terdeteksi di citra ini.</b>
+                  : "Graf tidak dapat dibangun dari citra ini."}
           </div>
         </div>}
 
@@ -530,12 +529,6 @@ function Results({ d, onReset }) {
           </div>
         </div>}
 
-        <div className="note note-soft">
-          <b>Ini urutan kunjungan, bukan ramalan.</b> “Tinggi” berarti sawit itu lebih
-          mendesak diperiksa dibanding sawit lain <b>di foto yang sama</b> — bukan
-          pernyataan bahwa ia akan sakit. Tingkatnya juga tidak bisa dibandingkan
-          antar-foto. Gunanya satu: menentukan ke mana regu berangkat duluan.
-        </div>
       </div>
     </div>
 

@@ -58,7 +58,7 @@ def per_tree_scores(fold, weights, imgsz=640):
     from scipy.spatial import cKDTree
     from ultralytics import YOLO
 
-    dev = 0 if torch.cuda.is_available() else "cpu"
+    dev = y12.pick_device()
     model = YOLO(weights)
     paths = [l.strip() for l in open(os.path.join(y12.ROOT, f"{fold}_val.txt")) if l.strip()]
     det, _ = dc.detect(model, paths, LOW_CONF, imgsz, 32, dev, stitch=True)

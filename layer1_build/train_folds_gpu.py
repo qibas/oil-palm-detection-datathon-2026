@@ -71,12 +71,18 @@ def preflight():
 
     print("== preflight ==")
     print("  torch %s | cuda build %s" % (torch.__version__, torch.version.cuda))
-    if not torch.cuda.is_available():
+    # device_count() ikut diperiksa: dengan CUDA_VISIBLE_DEVICES="" is_available()
+    # tetap True sementara jumlah perangkatnya nol, dan preflight ini akan lolos
+    # hanya untuk gagal 20 menit kemudian - persis yang ingin dicegahnya.
+    if not torch.cuda.is_available() or torch.cuda.device_count() == 0:
         raise SystemExit(
-            "torch tidak melihat GPU. Terpasang build CPU-only.\n"
+            "torch tidak melihat GPU (is_available=%s, device_count=%d).\n"
+            "  Kalau device_count 0 tapi is_available True, cek CUDA_VISIBLE_DEVICES.\n"
+            "  Kalau keduanya kosong, kemungkinan terpasang build CPU-only:\n"
             "  GTX 1060 = Pascal (sm_61); CUDA 13 sudah membuang Pascal, jadi pakai cu126:\n"
             '    pip install --index-url https://download.pytorch.org/whl/cu126 \\\n'
-            '        "torch==2.13.0+cu126" "torchvision==0.28.0+cu126"')
+            '        "torch==2.13.0+cu126" "torchvision==0.28.0+cu126"'
+            % (torch.cuda.is_available(), torch.cuda.device_count()))
     name = torch.cuda.get_device_name(0)
     vram = torch.cuda.get_device_properties(0).total_memory / 1024 ** 3
     cc = torch.cuda.get_device_capability(0)

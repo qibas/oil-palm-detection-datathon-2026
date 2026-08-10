@@ -61,7 +61,11 @@ code,.mono{font-family:var(--font-mono)}
 .appbar{display:flex; align-items:center; justify-content:space-between;
   padding:var(--space-5) var(--space-10); border-bottom:1px solid var(--ink-100);
   background:var(--surface-app); position:sticky; top:0; z-index:20}
-.mark{font:700 20px var(--font-display); letter-spacing:var(--tracking-tight)}
+/* Nama produk lebih panjang daripada logo dua-suku sebelumnya, jadi ukurannya
+   diturunkan dan dijaga satu baris supaya tidak mendorong stepper turun. */
+.mark{font:700 18px var(--font-display); letter-spacing:var(--tracking-tight);
+  white-space:nowrap}
+@media (max-width:820px){ .mark{font-size:16px} }
 .mark i{font-style:normal; color:var(--lime-600)}
 .page{max-width:880px; margin:0 auto; padding:56px var(--space-8) var(--space-12)}
 .page-wide{max-width:1240px; margin:0 auto; padding:var(--space-8) var(--space-8) 44px}
@@ -212,10 +216,6 @@ tbody tr:hover{background:var(--mint-100)}
 .legend{display:flex; flex-wrap:wrap; gap:14px; align-items:center;
   font-size:12px; color:var(--text-muted)}
 .legend .sw2{display:inline-flex; align-items:center; gap:6px}
-/* contoh lencana nomor - harus sama persis dengan yang digambar di kanvas */
-.legend .lg-num{display:inline-grid; place-items:center; width:17px; height:17px;
-  border-radius:50%; background:#fff; border:1.6px solid var(--ink-900);
-  font:700 11px var(--font-body); color:var(--ink-900); margin-right:-8px}
 .dot{width:10px; height:10px; border-radius:50%; display:inline-block}
 .ramp{display:flex; width:100%; border-radius:var(--radius-pill); overflow:hidden}
 .ramp i{flex:1 1 0; height:10px; display:block}

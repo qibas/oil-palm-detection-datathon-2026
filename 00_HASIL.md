@@ -172,12 +172,37 @@ yang tidak ada hubungannya dengan jarak tanam.
 
 Semua **20 seed × 2 lipatan = 40 pasangan**, kecuali kolom SI(D) (n=8).
 
-| h | temporal | prevalensi | **STRUKTUR** | total STGNN−MLP | kepala SI(D) *(n=8)* |
-|---|---|---|---|---|---|
-| 1 | +0,0044 (34/40) INCONCL | +0,0026 (32/40) INCONCL | +0,0044 (30/40) **INCONCL** | +0,0114 (38/40) POS | −0,0115 **NEG** |
-| 2 | +0,0034 (27/40) INCONCL | +0,0029 (33/40) INCONCL | **+0,0098 (37/40) POS** | +0,0161 (37/40) POS | −0,0230 **NEG** |
-| **3** | +0,0021 (21/40) INCONCL | +0,0021 (25/40) INCONCL | **+0,0151 (39/40) POS** | +0,0193 (36/40) POS | −0,0293 **NEG** (4/40) |
-| 4 | +0,0011 (19/40) INCONCL | +0,0018 (26/40) INCONCL | **+0,0165 (39/40) POS** | +0,0195 (35/40) POS | −0,0426 **NEG** |
+Nilainya **mean ± std (sign-count)**. Vonis mengikuti `paired()`: |mean| < 1 std ⇒ `INCONCLUSIVE`.
+
+| h | temporal | prevalensi | **STRUKTUR** | total STGNN−MLP |
+|---|---|---|---|---|
+| 1 | +0,0044 ± 0,0056 (34/40) INCONCL | +0,0026 ± 0,0035 (32/40) INCONCL | +0,0044 ± 0,0046 (30/40) **INCONCL** | +0,0114 ± 0,0069 (38/40) POS |
+| 2 | +0,0034 ± 0,0074 (27/40) INCONCL | +0,0030 ± 0,0045 (33/40) INCONCL | **+0,0098 ± 0,0060 (37/40) POS** | +0,0161 ± 0,0101 (37/40) POS |
+| **3** | +0,0021 ± 0,0092 (21/40) INCONCL | +0,0021 ± 0,0079 (25/40) INCONCL | **+0,0151 ± 0,0081 (39/40) POS** | +0,0193 ± 0,0130 (36/40) POS |
+| 4 | +0,0012 ± 0,0090 (19/40) INCONCL | +0,0018 ± 0,0070 (26/40) INCONCL | **+0,0165 ± 0,0097 (39/40) POS** | +0,0195 ± 0,0128 (35/40) POS |
+
+Kepala SI(D), n=8: **−0,0115** (h=1) · **−0,0230** (h=2) · **−0,0293** (h=3, 4/40) · **−0,0426** (h=4).
+NEG di keempat horizon — dibahas di temuan ② BAGIAN 3.
+
+**Dekomposisinya menjumlah tepat**, dan itu bisa dipakai sebagai pemeriksaan:
+
+| h | temporal + prevalensi + STRUKTUR | total | porsi STRUKTUR |
+|---|---|---|---|
+| 1 | 0,0044 + 0,0026 + 0,0044 = 0,0114 | 0,0114 | 39% |
+| 2 | 0,0034 + 0,0030 + 0,0098 = 0,0161 | 0,0161 | 61% |
+| 3 | 0,0021 + 0,0021 + 0,0151 = 0,0193 | 0,0193 | **78%** |
+| 4 | 0,0012 + 0,0018 + 0,0165 = 0,0195 | 0,0195 | **85%** |
+
+**Temporal dan prevalensi INCONCLUSIVE di keempat horizon tanpa kecuali** — keduanya selalu
+lebih kecil daripada std-nya sendiri. Yang paling telanjang h=4: temporal +0,0012 dengan std
+0,0090 dan tanda **19/40**, yaitu di bawah lemparan koin. Sebabnya dibahas di akhir BAGIAN 3:
+Eg9PP tak punya citra, sehingga riwayat pohon itu sendiri selagi asimptomatik terbukti persis
+nol — lengan temporal memang tak punya apa pun untuk dibawa.
+
+⚠ **std di tabel ini adalah std OPTIMISASI, bukan std data.** Reseeding menginisialisasi ulang
+jaringan dan menggambar ulang graf acak; ia **tidak** mengambil ulang sampel epideminya.
+Replikasi tingkat-data hanya datang dari **2 parcel**, dan efeknya beda **2,6×** antar blok
+(44A +0,0084 lawan 44B +0,0219). Jangan menuliskan ±0,008 sebagai ketidakpastian empiris.
 
 **Struktur menguat seiring horizon** (+0,004 → +0,017 dari h=1 ke h=4), sementara temporal justru
 **meluruh** (+0,0044 → +0,0011). Makin jauh ke depan, makin peta kontak yang menentukan.
@@ -374,6 +399,42 @@ yang mungkin" dihitung pada Eg9PP yang laju gejalanya **40,6%**; ubin drone khas
 karena dua pita memang kebenarannya di sana. Yang naik adalah **mutu peringkat**,
 bukan resolusi tampilan.
 
+### Dari mana keenam kolom itu bisa didapat — dan apakah terjangkau
+
+Bagian di atas menjawab *berapa nilainya*. Yang belum: *dari mana*. Keenam kolom
+STATE, apa adanya dari `dataset.py`, adalah `is_sympt` · `is_dead` · `is_cens` ·
+`d_sympt` · `d_dead` · `d_cens` — tiga status sekarang, tiga selisihnya dengan
+sensus sebelumnya.
+
+| kolom | sumber masukannya | terjangkau? |
+|---|---|---|
+| `is_sympt` | drone — kelas `Unhealthy` detektor | **sudah dipakai** |
+| `is_dead` | **drone yang sama**, tetapi detektor perlu kelas "mati" | ya — anotasi ulang, tanpa perangkat keras baru |
+| `is_cens` | **bukan citra**: catatan kebun (tumbang, dibongkar, disulam, dijarangi) | ya, bila kebun berbagi log operasionalnya |
+| `d_sympt` `d_dead` | drone yang sama, **penerbangan kedua** ≥1 interval sensus kemudian | ya, tetapi harus menunggu |
+| `d_cens` | catatan kebun pada dua tanggal | idem `is_cens` |
+
+**Tidak satu pun butuh sensor baru, dataset baru, atau metode baru.** Yang kurang
+adalah satu kelas label, satu berkas administrasi, dan satu penerbangan kedua.
+
+**Tetapi seluruh jarak 1 → 6 kolom hanya 1,45× → 1,61×, yaitu naik 11%.** Itu
+membuat daftar di atas sebuah **peta jalan, bukan penghalang**: menambah kolom
+menaikkan angka sedikit dan **tidak mengubah kesimpulan mana pun** di §2.5. Klaim
+inti — varian foto menyamai model penuh, dan 77% kemampuannya datang dari peta
+kontak yang benar — berdiri tanpa satu pun kolom tambahan.
+
+**Kalau hanya satu langkah yang diambil, ambil `is_dead`.** Bukan cuma karena
+perolehannya terbesar (+0,0046, 11,5 std, 20/20), tetapi karena sawit mati jauh
+lebih mudah dikenali dari udara daripada sawit bergejala — sehingga ongkos
+substitusi detektornya kemungkinan **lebih kecil** daripada 41% yang dibayar
+`is_sympt`. Ia juga satu-satunya yang biayanya sepenuhnya di dalam kendali sendiri;
+dua sisanya bergantung pada pihak kebun atau pada waktu.
+
+⚠ **Ongkos substitusi `is_dead` BELUM diukur.** Untuk `is_sympt` sudah ada angkanya
+(§ ongkos ujung-ke-ujung: 59% bertahan). Untuk `is_dead` belum, dan "mati" dari
+citra adalah **mati generik** — bukan mati karena Ganoderma. Jadi +0,0046 adalah
+**plafon**, bukan perolehan yang dijamin di lapangan.
+
 ### Kalibrasi: seberapa jauh skor dari peluang sungguhan
 
 Larangan "jangan sajikan `sigmoid(logit)` sebagai persentase" selama ini berupa
@@ -558,6 +619,7 @@ Ongkosnya diukur, bukan diasumsikan, di dua tempat: kontaminasi kekerabatan **36
 | Varian v3 tanpa genotipe | **36% kekerabatan** | efek graf v3 mengandung 36% kontaminasi famili (null dalam-famili+petak, 200 permutasi). Angka mentahnya **tidak boleh** dikutip seolah seluruhnya penularan; 64% yang tersisa adalah spasial |
 | ~~Masukan v3 dari citra belum diuji~~ | **DIUKUR: −41%** | Disimulasikan pada laju detektor ds_B (recall 0,446 · fpr 0,0094): AP dalam-sensus 0,0916 → **0,0800**, lift 1,45× → **1,27×**, **59% sinyal bertahan**. Yang tersisa sebagai batas: laju itu diukur di ds_B, kebun yang **berbeda** dari Eg9PP, jadi ini simulasi ongkos — bukan pengukuran lapangan di kebun tujuan |
 | Positif Unhealthy terlalu sedikit untuk menyetel ambang | **66 pohon unik** | Ambang kelas Unhealthy dipilih silang-lipatan justru **lebih buruk** (F1 0,370) daripada memakai 0,75 apa adanya (0,406); optimum per lipatan melompat 0,85/0,55/0,85 karena letaknya derau. Ambang tetap 0,75 |
+| Ongkos substitusi `is_dead` | **belum diukur** | Perolehan +0,0046 dari kelas "mati" diukur pada status Eg9PP yang terverifikasi lapangan. Dari citra, "mati" adalah **mati generik** — bukan mati karena Ganoderma — dan laju detektornya belum ada karena kelas itu belum dibuat. Angka itu **plafon**, bukan perolehan yang dijamin. Bandingkan `is_sympt`, yang substitusinya memakan 41% |
 | Peru (PalmAnom/PalmSan) | **1 lipatan, 1 seed** | mAP50 0,9495 tanpa std ⇒ `paired()` tak berlaku, **bukan** replikasi dan **tidak sebanding** dengan ds_B. Detektornya juga **lebih-prediksi 36%** (1,72 vs 1,267 kotak/citra), jadi mAP tinggi ≠ pencacahan tepat. Lihat §2.6 |
 | Checkpoint demo `stgnn_v3_photo.pt` | **tanpa held-out** | Dilatih pada seluruh data untuk keperluan tampilan; **tidak ada satu pun angka performa yang boleh dikutip darinya**. Angka jalur foto yang sah adalah 1,45× (masukan bersih) dan 1,27× (lewat detektor), keduanya dari `run_v3_cols.py`/`run_v3_noisy.py` yang block-CV. Skornya juga **logit mentah, bukan peluang** — lihat baris kalibrasi |
 | ~~Uji jembatan pakai kotak ground-truth~~ | **DITUTUP** | Kini diukur dari **prediksi detektor**, bukan kotak GT: derajat pohon-dalam **5,54 ± 0,12** lawan 5,62 ± 0,05 pada kotak GT (−1,4%). Terhadap 5,74 Eg9PP selisihnya **3,5%** — dan 5,74 berada **di luar** pita ±0,12, jadi kalimatnya "berselisih 3,5%", **bukan** "keduanya sama" |

@@ -96,6 +96,16 @@ PALETTE = {
     "quintile": ["#EE9A87", "#E5484D", "#B32B30", "#822024", "#4F1315"],
 }
 
+# Lebar KOTAK TAJUK acuan pada ds_B, piksel. Diukur pada 8 ubin contoh: median
+# 98,4 dengan rentang 89,3–102,6 — jauh lebih rapat daripada dugaan, sehingga layak
+# dipakai sebagai acuan skala.
+#
+# Kenapa perlu, padahal sudah ada SPACING_REF: jarak tanam butuh >= 20 pohon untuk
+# diukur, jadi ia buta persis pada kasus yang paling perlu didiagnosis — foto yang
+# skalanya begitu meleset sehingga detektor nyaris tidak menemukan apa pun. Lebar
+# tajuk hanya butuh SATU deteksi.
+BOX_FRAC_REF = 98.4 / 1024.0      # lebar tajuk / sisi terpanjang citra
+
 # Blok fitur checkpoint Lapisan 2 — rincian teknis, disimpan di balik expander.
 FEATURE_BLOCKS = [
     ("SELF — waktu/umur", 4, False, "butuh sumbu waktu; satu foto hanya satu tanggal"),
@@ -133,7 +143,7 @@ def readiness(info):
         # apakah DETEKTOR masih berada di dalam distribusi latihnya, bukan apakah
         # grafnya benar. Pesan lama ("graf tidak dibangun") keliru di dua sisi
         # sekaligus: grafnya dibangun, dan yang berisiko bukan grafnya.
-        {"bahan": "Peta kontak antar-pohon",
+        {"bahan": "Graf kontak antar-pohon",
          "ada": bool(info and info.get("ok_n")),
          "punyamu": ("derajat %.2f, %d pohon bagian dalam%s"
                      % (info["deg_inner"], info["n_inner"],
@@ -183,40 +193,108 @@ def photo_checks(info):
     n = int(info.get("n", 0)) if info else 0
     ok_n = bool(info and info.get("ok_n"))
     sp = info.get("spacing_px") if info else None
+    box = info.get("box_px") if info else None
     ratio = info.get("scale_ratio") if info else None
+    iw = int(info.get("img_w", 0)) if info else 0
+    ih = int(info.get("img_h", 0)) if info else 0
     target = float(_np.mean(dc.SPACING_REF))
     lo, hi = dc.SCALE_WINDOW[0] * target, dc.SCALE_WINDOW[1] * target
 
-    out = [{
-        "judul": "Jumlah sawit",
-        "syarat_foto": True,
-        "berat": True,          # gagal di sini = TIDAK ADA peringkat sama sekali
-        "ok": ok_n,
-        "punyamu": "%d sawit terdeteksi" % n,
-        "syarat": "minimal %d" % dc.MIN_TREES_FOR_SPACING,
-        "saran": ("Pakai potongan foto yang lebih luas. Satu potongan sekitar "
-                  "1.000 × 1.000 piksel biasanya memuat ~65 sawit."),
-    }]
+    def resize_hint(f):
+        return ("Ubah ukuran foto: %s sekitar %.1f×."
+                % (("perbesar", f) if f > 1 else ("perkecil", 1.0 / f)))
+
+    out = []
+
+    # --- SKALA DIDAHULUKAN, karena ia SEBAB dan jumlah sawit sering cuma AKIBAT.
+    #
+    # Dulu cek skala hanya jalan bila >= 20 pohon terdeteksi, sebab ia bersandar
+    # pada jarak tanam. Akibatnya foto yang skalanya jauh meleset - sehingga
+    # detektor menemukan 0 pohon - hanya dilaporkan sebagai "kurang dari 20 sawit",
+    # dan penggunanya disuruh memotong lebih luas padahal masalahnya resolusi.
+    # Salah diagnosis, dan sarannya menyesatkan.
+    #
+    # Karena itu ada tiga tingkat bukti, dipakai menurut yang tersedia:
+    #   >= 20 pohon : jarak tanam       (paling andal)
+    #   >=  1 pohon : ukuran kotak tajuk (acuan 98,4 px, rentang ds_B 89-103)
+    #      0 pohon  : ukuran citra saja  (tidak ada bukti dari deteksi)
+    side = float(max(iw, ih)) or 1024.0
+    frac_lo = dc.SCALE_WINDOW[0] * dc.SPACING_FRAC_REF
+    frac_hi = dc.SCALE_WINDOW[1] * dc.SPACING_FRAC_REF
 
     if ok_n and sp and _np.isfinite(sp):
-        ok_s = bool(info.get("ok_scale"))
-        f = target / float(sp)
-        saran = ("Ubah ukuran foto: %s sekitar %.1f×."
-                 % (("perbesar", f) if f > 1 else ("perkecil", 1.0 / f)))
         out.append({
-            "judul": "Skala foto",
-            "syarat_foto": True,
+            "judul": "Skala foto", "syarat_foto": True,
             # RINGAN: peringkatnya tetap keluar dan grafnya tetap benar - radius graf
             # diturunkan dari jarak tanam yang TERUKUR di citra itu, jadi ia ikut
-            # menyesuaikan skala. Yang meragukan adalah kelengkapan daftar pohonnya,
-            # karena detektor bekerja di luar kondisi latihnya. Karena itu pengguna
-            # boleh memilih tetap melihat hasilnya.
+            # menyesuaikan skala. Yang meragukan adalah kelengkapan daftar pohonnya.
             "berat": False,
-            "ok": ok_s,
-            "punyamu": "jarak antar sawit %.0f piksel (%.2f× acuan)" % (sp, ratio),
-            "syarat": "%.0f–%.0f piksel" % (lo, hi),
-            "saran": saran + (" Di luar rentang ini detektor bekerja di luar kondisi "
-                              "latihnya, jadi sebagian sawit bisa terlewat."),
+            "ok": bool(info.get("ok_scale")),
+            "punyamu": "jarak antar sawit 1/%.0f lebar foto (%.2f× acuan)"
+                       % (side / float(sp), ratio),
+            "syarat": "antara 1/%.0f dan 1/%.0f lebar foto"
+                      % (1 / frac_hi, 1 / frac_lo),
+            # Sarannya MEMOTONG/MEMPERLUAS, bukan mengubah ukuran berkas:
+            # memperkecil seluruh foto tidak mengubah rasio ini sama sekali.
+            "saran": ("Potongannya terlalu sempit — sawitnya terlalu besar di dalam"
+                      " bingkai. Ambil cakupan yang lebih luas (perluas sekitar"
+                      " %.1f×), jangan sekadar memperbesar berkasnya."
+                      % (ratio) if ratio > 1 else
+                      "Cakupannya terlalu luas — sawitnya terlalu kecil di dalam"
+                      " bingkai. Potong lebih rapat sekitar %.1f×." % (1 / ratio)),
+        })
+    elif n >= 1 and box and _np.isfinite(box):
+        # Sama, tetapi diukur dari LEBAR TAJUK - hanya butuh satu deteksi, sedangkan
+        # jarak tanam butuh 20. Inilah cabang yang menyelamatkan kasus paling perlu
+        # didiagnosis: foto yang skalanya begitu meleset sampai nyaris nihil deteksi.
+        fb = box / side
+        okb = bool(BOX_FRAC_REF * dc.SCALE_WINDOW[0] <= fb
+                   <= BOX_FRAC_REF * dc.SCALE_WINDOW[1] and side >= dc.MIN_IMAGE_PX)
+        rb = fb / BOX_FRAC_REF
+        out.append({
+            "judul": "Skala foto", "syarat_foto": True,
+            "berat": not okb,      # skala meleset + pohon sedikit = tak ada peringkat
+            "ok": okb,
+            "punyamu": "tajuk selebar 1/%.0f lebar foto (%.2f× acuan)"
+                       % (side / float(box), rb),
+            "syarat": "sekitar 1/%.0f lebar foto" % (1 / BOX_FRAC_REF),
+            "saran": ("Potongannya terlalu sempit — ambil cakupan lebih luas sekitar"
+                      " %.1f×." % rb if rb > 1 else
+                      "Cakupannya terlalu luas — potong lebih rapat sekitar %.1f×."
+                      % (1 / rb))
+                     + " Diukur dari lebar tajuk, karena pohon yang terdeteksi belum"
+                       " cukup untuk mengukur jarak tanam.",
+        })
+    elif n == 0:
+        out.append({
+            "judul": "Skala foto", "syarat_foto": True, "berat": True, "ok": False,
+            "punyamu": ("citra %d × %d piksel" % (iw, ih)) if iw else "tidak terukur",
+            "syarat": "satu tajuk ≈ 1/%.0f lebar foto" % (1 / BOX_FRAC_REF),
+            "saran": ("Fotonya terlalu kecil: sisi terpanjang di bawah %d piksel,"
+                      " dan memperbesarnya kembali tidak memulihkan detail. Pakai"
+                      " berkas beresolusi penuh, jangan tangkapan layar."
+                      % dc.MIN_IMAGE_PX) if side < dc.MIN_IMAGE_PX else
+                     ("Detektor tidak mengenali satu tajuk pun. Patokannya: satu"
+                      " tajuk sawit semestinya sekitar sepersepuluh lebar foto."
+                      " Kalau sawitnya tampak jauh lebih besar, ambil cakupan lebih"
+                      " luas; kalau jauh lebih kecil, potong lebih rapat. Pastikan"
+                      " juga fotonya pandangan tegak dari atas."),
+        })
+
+    # Jumlah sawit. Disebut SESUDAH skala, dan sarannya menyesuaikan diri: kalau
+    # skalanya sudah dilaporkan meleset, menyuruh "potong lebih luas" adalah saran
+    # yang salah - memperluas potongan pada skala yang salah tetap nihil.
+    skala_gagal = any(c["judul"] == "Skala foto" and not c["ok"] for c in out)
+    if n > 0:
+        out.append({
+            "judul": "Jumlah sawit", "syarat_foto": True, "berat": True, "ok": ok_n,
+            "punyamu": "%d sawit terdeteksi" % n,
+            "syarat": "minimal %d" % dc.MIN_TREES_FOR_SPACING,
+            "saran": ("Perbaiki skalanya dulu — pada skala yang benar potongan ini"
+                      " kemungkinan besar sudah memuat cukup sawit."
+                      if skala_gagal else
+                      "Pakai potongan foto yang lebih luas. Satu potongan sekitar"
+                      " 1.000 × 1.000 piksel biasanya memuat ~65 sawit."),
         })
 
     n_s = int(info.get("n_sympt", 0)) if info else 0
@@ -283,12 +361,25 @@ def detect_image(path, fold="fold0", conf=0.75, imgsz=640):
     import torch
     from ultralytics import YOLO
 
-    dev = 0 if torch.cuda.is_available() else "cpu"
+    dev = dc.pick_device()
     model = YOLO(w)
+    # Bobot bisa diganti kapan saja (latih ulang, fold lain, rekan satu tim).
+    # Urutan kelas yang berbeda membalik sehat/sakit tanpa galat - dijaga di sini.
+    dc.assert_classes(model, os.path.relpath(w, ROOT))
+    # Dimensi citra dibaca lebih dulu: pada kasus NOL deteksi ia satu-satunya bukti
+    # yang tersisa untuk mendiagnosis skala.
+    try:
+        from PIL import Image as _Im
+        _iw, _ih = _Im.open(path).size
+    except Exception:
+        _iw = _ih = 0
+
     det, _ = dc.detect(model, [path], conf, imgsz, 1, dev, stitch=False)
     if not det:
         return pd.DataFrame(columns=["cx", "cy", "conf", "cls", "deg"]), {
-            "n": 0, "ok_scale": False, "note": "tidak ada deteksi di atas conf %.2f" % conf}
+            "n": 0, "ok_n": False, "ok_scale": False, "n_sympt": 0,
+            "img_w": _iw, "img_h": _ih,
+            "note": "tidak ada deteksi di atas conf %.2f" % conf}
 
     box = float(np.median([d[6] for d in det]))
     det, scale = dc.merge_two_pass(det, box)
@@ -296,8 +387,15 @@ def detect_image(path, fold="fold0", conf=0.75, imgsz=640):
     spacing = dc.spacing_of(xy)
 
     ok_n = len(det) >= dc.MIN_TREES_FOR_SPACING
-    ratio = spacing / np.mean(dc.SPACING_REF) if np.isfinite(spacing) else float("nan")
-    ok_scale = bool(ok_n and dc.SCALE_WINDOW[0] <= ratio <= dc.SCALE_WINDOW[1])
+    # Rasio skala diukur RELATIF terhadap sisi terpanjang citra, bukan dalam piksel
+    # absolut - lihat `dc.SPACING_FRAC_REF` untuk buktinya. Gerbang lama meloloskan
+    # potongan sempit yang kehilangan seperempat pohon, dan menolak foto yang
+    # diperkecil padahal hasilnya identik.
+    side = float(max(_iw, _ih)) or 1024.0
+    ratio = ((spacing / side) / dc.SPACING_FRAC_REF
+             if np.isfinite(spacing) else float("nan"))
+    ok_scale = bool(ok_n and dc.SCALE_WINDOW[0] <= ratio <= dc.SCALE_WINDOW[1]
+                    and side >= dc.MIN_IMAGE_PX)
 
     deg = np.full(len(det), np.nan)
     d_all = d_in = float("nan")
@@ -318,15 +416,33 @@ def detect_image(path, fold="fold0", conf=0.75, imgsz=640):
     # latih. Peringkatnya masuk akal karena modelnya monoton, tetapi tidak ada
     # ground truth kontinu di Eg9PP untuk menguji apakah gradasi itu LEBIH BENAR.
     # UI wajib menandainya; `score_photo(mode=...)` menyimpan keduanya.
+    # BATAS JARAK WAJIB ADA di pencocokan di bawah, dan ketiadaannya pernah jadi bug.
+    #
+    # `query(k=1)` tanpa `distance_upper_bound` SELALU mengembalikan tetangga
+    # terdekat, seberapa jauh pun ia. Deteksi conf-rendah yang tidak punya pohon
+    # padanan di daftar conf-0,75 karena itu ditempelkan ke pohon sembarang. Kasus
+    # nyata di ubin 44000_16000_2242_2574: hipotesis Unhealthy 0,43 di (394, 540)
+    # tidak punya pohon (kedua hipotesisnya di bawah 0,75), lalu menempel ke pohon
+    # terdekat yang berjarak 112 px - yakni skor sakit mendarat di POHON YANG SALAH.
+    #
+    # Batasnya `MERGE_FRAC * scale`, yaitu radius yang sama persis yang dipakai
+    # `merge_two_pass` untuk memutuskan dua deteksi adalah pohon yang sama. Kalau
+    # sebuah deteksi terlalu jauh untuk digabungkan, ia juga terlalu jauh untuk
+    # meminjamkan skornya.
     from scipy.spatial import cKDTree as _KD
     soft = np.zeros(len(det), float)
+    n_orphan = 0
     try:
         det_lo, _ = dc.detect(model, [path], 0.10, imgsz, 1, dev, stitch=False)
         if det_lo:
             lo_xy = np.array([[d[0], d[1]] for d in det_lo], float)
             lo_unh = np.array([d[2] if d[3] == 1 else 0.0 for d in det_lo], float)
-            _, idx = _KD(xy).query(lo_xy, k=1)
-            for i, v in zip(idx, lo_unh):
+            cap = dc.MERGE_FRAC * scale
+            dist, idx = _KD(xy).query(lo_xy, k=1, distance_upper_bound=cap)
+            for dd, i, v in zip(dist, idx, lo_unh):
+                if i >= len(xy) or not np.isfinite(dd):
+                    n_orphan += int(v > 0)     # hipotesis sakit tanpa pohon padanan
+                    continue
                 if v > soft[i]:
                     soft[i] = v
     except Exception:                      # lintasan lunak opsional; jangan jatuhkan demo
@@ -342,10 +458,15 @@ def detect_image(path, fold="fold0", conf=0.75, imgsz=640):
     })
     info = {
         "n": len(det), "box_px": box, "spacing_px": spacing, "scale_ratio": ratio,
+        "img_w": _iw, "img_h": _ih,
         "ok_scale": ok_scale, "ok_n": ok_n, "deg_all": d_all, "deg_inner": d_in,
         "n_inner": n_in, "r_graph_px": dc.R_GRAPH * spacing if ok_n else float("nan"),
         "weights": os.path.relpath(w, ROOT), "fold": fold, "conf": conf,
         "n_sympt": int((df.cls == "Unhealthy").sum()),
+        # Hipotesis Unhealthy conf-rendah yang TIDAK punya pohon padanan dalam
+        # radius gabung. Dulu angka-angka ini diam-diam menempel ke pohon lain;
+        # sekarang dibuang dan dihitung, supaya kehilangannya terlihat.
+        "n_unh_orphan": n_orphan, "match_cap_px": dc.MERGE_FRAC * scale,
     }
     return df, info
 

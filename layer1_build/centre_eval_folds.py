@@ -46,7 +46,9 @@ sys.path.insert(0, BASE)
 import y12  # noqa: E402
 
 SEED = int(os.environ.get("SEED", 42))
-TAG = "yolo12n_base"
+# TAG bisa diganti lewat env supaya lengan lain bisa dinilai dengan harness yang
+# SAMA PERSIS - termasuk pemilihan ambang silang-lipatan. Default tetap garis dasar.
+TAG = os.environ.get("TAG", "yolo12n_base")
 IMGSZ = int(os.environ.get("IMGSZ", 640))
 RADIUS_FRAC = 0.5          # ambang cocok, kelipatan jarak tanam
 R_GRAPH = 1.5              # radius graf kontak, kelipatan jarak tanam
@@ -187,7 +189,12 @@ def main():
     print("\n   pembanding Lapisan 2 (Eg9PP, pohon bagian dalam) = 5,74")
     print("   CATATAN: hanya kolom 'dalam' yang sebanding dengan 5,74.")
 
-    p = os.path.join(y12.RESDIR, "centre_eval.json")
+    # Garis dasar menulis `centre_eval.json`; lengan lain menulis berkasnya sendiri.
+    # WAJIB dipisah: `demo_core.CENTRE_JSON` membaca `centre_eval.json` dan
+    # menampilkan F1-nya di layar. Lengan eksperimen yang menimpanya akan membuat
+    # demo memamerkan angka yang belum tervalidasi, tanpa satu pun galat muncul.
+    p = os.path.join(y12.RESDIR, "centre_eval.json" if TAG == "yolo12n_base"
+                     else "centre_eval_%s.json" % TAG)
     json.dump(dict(tag=TAG, seed=SEED, imgsz=IMGSZ, radius_frac=RADIUS_FRAC,
                    r_graph=R_GRAPH, confs=CONFS, chosen_conf=chosen,
                    conf_selection="silang-lipatan; lipatan uji tidak ikut memilih",

@@ -44,7 +44,8 @@ import dataset as ds          # noqa: E402
 import dataset_v2 as v2       # noqa: E402
 import models_real as M       # noqa: E402
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cuda" if (torch.cuda.is_available()
+                                 and torch.cuda.device_count() > 0) else "cpu")
 SEEDS = int(os.environ.get("SEEDS", 5))
 HORIZON = int(os.environ.get("H", 3))
 EPOCHS = int(os.environ.get("EPOCHS", 60))

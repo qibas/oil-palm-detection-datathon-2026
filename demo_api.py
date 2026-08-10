@@ -241,6 +241,6 @@ app = Starlette(routes=[
 
 if __name__ == "__main__":
     import uvicorn
-    print("SawitGuard  ->  http://localhost:8000")
+    print("Prediksi Pohon Berisiko  ->  http://localhost:8000")
     print("  React + Babel di-vendor lokal; demo ini tidak butuh internet.")
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")

@@ -42,6 +42,36 @@ CLS = {"Healthy": 0, "Unhealthy": 1}
 NAMES = {0: "Healthy", 1: "Unhealthy"}
 SINGLE = False        # mode kelas-tunggal; diatur oleh set_mode()/build()
 
+
+def pick_device(prefer=None):
+    """-> 0 (GPU pertama) atau "cpu". Satu tempat, dipakai seluruh Lapisan 1.
+
+    KENAPA `torch.cuda.is_available()` SAJA TIDAK CUKUP.
+
+    Keduanya bisa tidak sepakat: dengan `CUDA_VISIBLE_DEVICES=""`, atau ketika
+    driver terpasang tetapi tidak ada GPU yang terlihat proses ini,
+    `is_available()` mengembalikan **True** sementara `device_count()` nol.
+    Kode lama menyimpulkan "ada GPU" lalu meneruskan `device=0` ke Ultralytics,
+    yang menolaknya dengan:
+
+        ValueError: Invalid CUDA 'device=0' requested.
+
+    Gagalnya bukan di awal melainkan di panggilan predict pertama, jadi ia
+    tampak seperti kerusakan model, bukan salah pilih perangkat. Terjadi
+    sungguhan saat menelusuri ubin 44000_16000_2242_2574.
+    """
+    import torch
+
+    if prefer is not None:
+        return prefer
+    try:
+        if torch.cuda.is_available() and torch.cuda.device_count() > 0:
+            return 0
+    except Exception:                      # driver rusak / torch tanpa CUDA
+        pass
+    return "cpu"
+
+
 # Direktori kerja. set_mode() menukar seluruh blok ini sekaligus supaya dua mode
 # TIDAK PERNAH berbagi direktori: hasil 2-kelas dan 1-kelas tidak sebanding, dan
 # menaruhnya di folder yang sama adalah cara termudah membandingkan dua hal beda.
@@ -538,7 +568,7 @@ def train_arm(arm, model="yolo12n.pt", folds=None, seeds=(42,), epochs=30, imgsz
 
     folds = folds or [os.path.splitext(os.path.basename(p))[0]
                       for p in sorted(glob.glob(os.path.join(ROOT, "fold*.yaml")))]
-    dev = device if device is not None else (0 if torch.cuda.is_available() else "cpu")
+    dev = pick_device(device)
     batch = batch or (16 if imgsz <= 640 else 8)      # 8 GB VRAM tidak muat 16 @1024
     mtag = os.path.splitext(os.path.basename(model))[0]
     tag = f"{mtag}_{arm}" + (f"_{tag_suffix}" if tag_suffix else "")
@@ -727,7 +757,7 @@ def predict_global(weights, fold, conf=0.25, imgsz=640, device=None, batch=32,
     from scipy.spatial import cKDTree
     from ultralytics import YOLO
 
-    dev = device if device is not None else (0 if torch.cuda.is_available() else "cpu")
+    dev = pick_device(device)
     paths = [l.strip() for l in open(os.path.join(ROOT, f"{fold}_val.txt")) if l.strip()]
     m = YOLO(weights)
     det = []

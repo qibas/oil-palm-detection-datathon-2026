@@ -55,7 +55,7 @@ import anom
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 CROWNS = os.path.join(os.path.dirname(BASE), "data_clean", "layer1_crowns.csv")
-DEV = "cuda" if torch.cuda.is_available() else "cpu"
+DEV = "cuda" if y12.pick_device() != "cpu" else "cpu"
 SZ = 224
 DSB_PX = 100          # sisi tajuk median ds_B, untuk lengan degradasi resolusi
 

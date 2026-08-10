@@ -55,11 +55,39 @@ import y12  # noqa: E402
 
 IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
 
+# Diteruskan supaya pemanggil hilir (demo_core) tidak perlu mengimpor y12 sendiri.
+# `detect_centres` adalah satu-satunya sambungan Lapisan 1 -> demo; menambah impor
+# kedua di sisi demo akan membuat sambungan itu bercabang.
+pick_device = y12.pick_device
+
 # Acuan ds_B: jarak tanam terukur 101-106 px pada ubin 1024^2 (LABEL_QUALITY_AUDIT.md).
 SPACING_REF = (101.1, 105.8)
 SCALE_WINDOW = (0.8, 1.25)       # di luar ini, ubin harus di-resample dulu
 MIN_TREES_FOR_SPACING = 20       # di bawah ini median NN tidak dapat dipercaya
 R_GRAPH = 1.5                    # radius graf kontak, kelipatan jarak tanam
+
+# Jarak tanam sebagai PECAHAN sisi terpanjang citra: 105,4 / 1024.
+#
+# INI, BUKAN JARAK TANAM ABSOLUT, YANG MENENTUKAN APAKAH DETEKTOR BEKERJA.
+# Ultralytics menskalakan tiap masukan ke `imgsz` lebih dulu, jadi ukuran tajuk
+# dalam piksel BERKAS tidak pernah sampai ke model - yang sampai adalah ukuran
+# tajuk RELATIF terhadap bingkainya. Diukur pada ubin 44000_16000_2242_2574:
+#
+#   diperkecil 1024 -> 512   rasio 0,097   91 sawit  (sama persis dengan asli)
+#   diperkecil ->  256       rasio 0,097   91 sawit
+#   diperkecil ->  184       rasio 0,096   88 sawit
+#   DIPOTONG   ->  640       rasio 0,159   27 dari ~36 yang ada di potongan
+#   DIPOTONG   ->  480       rasio 0,185    4 dari ~20
+#   DIPOTONG   ->  320       rasio  n/a     0
+#
+# Gerbang berbasis piksel absolut karena itu salah di dua arah sekaligus: ia
+# menandai foto 512 px sebagai "di luar rentang" padahal sempurna, dan MELOLOSKAN
+# potongan 640 px yang sudah kehilangan seperempat pohonnya.
+SPACING_FRAC_REF = 105.4 / 1024.0
+
+# Batas bawah absolut yang tetap berlaku: di bawah ~180 px sisi terpanjang,
+# memperbesar kembali ke imgsz tidak memulihkan detail (128 px -> 41 sawit saja).
+MIN_IMAGE_PX = 180
 
 # F1 per lipatan pada ortomosaik yang DITAHAN (centre_eval_folds.py, conf 0,75).
 FOLD_F1 = {"fold0": 0.969, "fold1": 0.977, "fold2": 0.933}
@@ -78,6 +106,42 @@ def images_in(path):
 def weights_for(fold):
     p = os.path.join(y12.RUNS, f"yolo12n_base_{fold}_s42", "weights", "best.pt")
     return p if os.path.isfile(p) else None
+
+
+def assert_classes(model, where=""):
+    """Pastikan bobot yang dimuat memakai peta kelas yang SAMA dengan `y12.NAMES`.
+
+    KENAPA INI HARUS ADA, dan kenapa asersi bukan peringatan.
+
+    Seluruh jalur hilir memakai indeks kelas mentah: `d[3] == 1` berarti Unhealthy,
+    dan indeks itu diterjemahkan lewat `y12.NAMES` - BUKAN lewat `model.names`.
+    Kalau seseorang memasang bobot yang urutan kelasnya terbalik (Ultralytics
+    mengurutkan kelas sesuai `data.yaml`, jadi ini gampang terjadi saat melatih
+    ulang dari dataset yang disusun ulang), maka:
+
+      - tiap sawit sehat dibaca sakit dan sebaliknya;
+      - graf tetap terbangun, jumlah pohon tetap benar, skala tetap lolos;
+      - peringkat risikonya keluar TERBALIK SEMPURNA;
+      - dan TIDAK ADA galat apa pun yang muncul.
+
+    Kegagalan senyap yang membalik kesimpulan adalah kegagalan terburuk yang bisa
+    dimiliki paket ini, jadi ia dihentikan di detik pertama.
+    """
+    got = getattr(model, "names", None)
+    if isinstance(got, dict):
+        got = {int(k): str(v) for k, v in got.items()}
+    want = {int(k): str(v) for k, v in y12.NAMES.items()}
+    if got != want:
+        raise SystemExit(
+            "PETA KELAS TIDAK COCOK%s\n"
+            "  bobot     : %s\n"
+            "  diharapkan: %s\n\n"
+            "Jalur hilir memakai indeks kelas mentah dan menerjemahkannya lewat\n"
+            "y12.NAMES, jadi urutan yang berbeda akan membalik sehat/sakit tanpa\n"
+            "galat apa pun. Perbaiki urutan kelas di data.yaml lalu latih ulang,\n"
+            "atau perbarui y12.NAMES bila kelasnya memang sengaja berubah."
+            % (" (%s)" % where if where else "", got, want))
+    return True
 
 
 def detect(model, paths, conf, imgsz, batch, device, stitch):
@@ -231,7 +295,7 @@ def main():
     import torch
     from ultralytics import YOLO
 
-    dev = a.device if a.device is not None else (0 if torch.cuda.is_available() else "cpu")
+    dev = y12.pick_device(a.device)
     model = YOLO(w)
 
     print("bobot   : %s" % os.path.relpath(w, BASE))
