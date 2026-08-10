@@ -160,7 +160,8 @@ Berkas yang WAJIB ada agar demo jalan — pastikan ikut ter-commit:
 |---|---|
 | `layer2_real/stgnn_v3_photo.pt` | checkpoint Lapisan 2 varian foto (54 KB) |
 | `layer2_real/risk_ranked.csv` | peringkat Eg9PP untuk layar Bukti |
-| `layer1_build/yolo12_runs/yolo12n_base_fold*/weights/best.pt` | bobot detektor |
+| `layer1_build/yolo12_runs/yolo12n_base_fold*/weights/best.pt` | bobot detektor (lari 3 lipatan; angka naskah) |
+| `layer1_build/yolo12_runs/yolo12n_base_1fold_fold0_s42/weights/best.pt` | bobot yang DIPAKAI demo lebih dahulu; tanpa berkas ini demo jatuh ke bobot 3 lipatan dan tetap jalan |
 | `web/vendor/*.js` | React, ReactDOM, Babel (3,2 MB) |
 | `data_clean/*.csv` | dataset beku |
 
