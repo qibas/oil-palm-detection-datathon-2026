@@ -24,6 +24,17 @@ const GREEN = "#4EC75B", DANGER = "#E5484D", INK = "#1A1C17";
 const num = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v))
   ? "—" : Number(v).toFixed(d).replace(".", ",");
 
+// Backend mengembalikan {error: "..."} berbahasa Indonesia untuk kegagalan yang
+// terduga (mis. berkas bukan gambar). Tanpa ini, pengguna hanya melihat
+// "Error: HTTP 400/500" - benar tapi tidak memberi tahu apa yang harus dilakukan.
+async function apiErrorMessage(r) {
+  try {
+    const j = await r.json();
+    if (j && j.error) return j.error;
+  } catch (e) { /* body bukan JSON - pakai fallback di bawah */ }
+  return "Server gagal memproses (HTTP " + r.status + "). Coba lagi.";
+}
+
 /* Persentil menggantikan skor mentah di SELURUH tabel peringkat.
    Alasannya tiga, dan ketiganya sudah pernah menggigit:
      1. skor jalur foto adalah logit mentah yang semuanya NEGATIF (-0,93 .. -0,65);
@@ -106,7 +117,7 @@ const SIDE_VIEWS = [["bukti", "Bukti & validasi"], ["env", "Konteks lingkungan"]
 function AppBar({ step, view, onView }) {
   const S = ["Unggah", "Proses", "Hasil"];
   return <div className="appbar">
-    <div className="mark">Prediksi <i>Pohon Berisiko</i></div>
+    <div className="mark">Sawit<i>Guard</i></div>
     <div className="appbar-actions">
       {view === "app" && <div className="stepper" style={{ marginRight: 4 }}>
         {S.map((label, i) => <React.Fragment key={label}>
@@ -1198,7 +1209,7 @@ function App() {
     if (opt.file) fd.append("file", opt.file); else fd.append("sample", String(opt.sample));
     try {
       const r = await fetch("/api/analyze", { method: "POST", body: fd });
-      if (!r.ok) throw new Error("HTTP " + r.status);
+      if (!r.ok) throw new Error(await apiErrorMessage(r));
       const j = await r.json();
       clearInterval(tick); setData(j);
       // Hanya SYARAT foto yang memicu dialog. Butir informatif (mis. tidak ada
@@ -1229,7 +1240,7 @@ function App() {
       fd.append("file", files[i]);
       try {
         const r = await fetch("/api/analyze", { method: "POST", body: fd });
-        if (!r.ok) throw new Error("HTTP " + r.status);
+        if (!r.ok) throw new Error(await apiErrorMessage(r));
         const j = await r.json();
         results.push(Object.assign({ srcName: files[i].name }, j));
       } catch (e) {

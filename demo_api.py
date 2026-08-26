@@ -88,8 +88,8 @@ async def api_samples(request):
         b = os.path.basename(p)
         ortho = b.split("_")[0] + "_" + b.split("_")[1]
         out.append({"id": i, "name": b[:18] + "…", "thumb": _thumb(p),
-                    "label": ("Ortho %s · gejala" % ortho[:5]) if b in sick_tiles()
-                             else ("Ortho %s" % ortho[:5])})
+                    "label": ("Ortho %s · gejala" % ortho) if b in sick_tiles()
+                             else ("Ortho %s" % ortho)})
     return JSONResponse({"samples": out, "facts": core.FACTS})
 
 
@@ -104,14 +104,26 @@ async def api_analyze(request):
     else:
         path = samples()[int(form.get("sample", 0))]
 
+    # Divalidasi lebih dulu, sebelum detektor (mahal) dijalankan - berkas bukan
+    # gambar (PDF, teks, foto rusak) sebelumnya lolos sampai ke YOLO/ultralytics
+    # dan gagal di sana dengan traceback mentah (500 tanpa pesan yang bisa
+    # dipahami pengguna). Gagal cepat di sini dengan pesan yang jelas.
+    from PIL import Image
+    try:
+        with Image.open(path) as im:
+            ow, oh = im.size
+    except Exception:
+        return JSONResponse(
+            {"ok": False, "error": "Berkas ini bukan foto yang bisa dibaca. Unggah JPG/PNG dari kebun."},
+            status_code=400,
+        )
+
     df, info = core.detect_image(path)
     res = core.score_photo(df, info, mode="biner") if info.get("ok_n") else None
     res_soft = core.score_photo(df, info, mode="kontinu") if info.get("ok_n") else None
     url, (W, Hh) = _img_data_url(path)
 
     # Koordinat dinormalisasi ke [0,1] supaya frontend bebas menskalakan.
-    from PIL import Image
-    ow, oh = Image.open(path).size
     def nx(v): return float(v) / ow
     def ny(v): return float(v) / oh
 
@@ -314,7 +326,7 @@ def _banner_bobot():
 
 if __name__ == "__main__":
     import uvicorn
-    print("Prediksi Pohon Berisiko  ->  http://localhost:8000")
+    print("SawitGuard  ->  http://localhost:8000")
     print("  React + Babel di-vendor lokal; demo ini tidak butuh internet.")
     _banner_bobot()
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
