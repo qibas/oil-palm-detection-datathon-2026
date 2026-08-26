@@ -1,6 +1,6 @@
-"""Logika demo, TANPA Streamlit — supaya bisa diuji tanpa menjalankan server.
+"""Logika demo, tanpa server, supaya bisa diuji langsung dari baris perintah.
 
-`demo_app.py` hanya menggambar; seluruh perhitungan ada di sini. Pemisahan ini
+`demo_api.py` hanya lapisan HTTP; seluruh perhitungan ada di sini. Pemisahan ini
 disengaja: kalau angka di layar salah, yang diperiksa satu berkas ini, dan ia bisa
 dijalankan langsung:
 
@@ -23,7 +23,8 @@ RISK_CSV = os.path.join(L2, "risk_ranked.csv")
 CENTRE_JSON = os.path.join(L1, "yolo12_results", "centre_eval.json")
 
 # --- Angka tetap yang boleh ditampilkan. Sumber tunggal, jangan ditulis ulang
-#     di demo_app.py. Semua berasal dari centre_eval.json / 00_RINGKASAN.csv.
+#     di demo_api.py atau web/app.jsx. Semua berasal dari centre_eval.json /
+#     00_RINGKASAN.csv.
 FACTS = {
     "f1": (0.960, 0.024),
     "precision": (0.950, 0.019),
@@ -694,6 +695,56 @@ def outbreak_foci(df, info):
             "n_sakit": int(sick.sum()), "n_terpapar": len(terpapar)}
 
 
+_TIMELINE = None
+
+
+def eg9pp_timeline():
+    """Animasi 25 tahun: status TIAP sawit di TIAP sensus, dari catatan lapangan
+    Eg9PP mentah — BUKAN skor model.
+
+    DEMO_BRIEF.md §8 menyebut ini butir pertama "kalau ada waktu lebih": putar
+    sensus 1->45 supaya penyebaran gejala terlihat merambat antar tetangga.
+    Sengaja HANYA memutar ulang `status` (A/S/D/C) apa adanya, bukan menjalankan
+    checkpoint 45 kali - itu akan mengundang klaim performa yang tidak diukur
+    (`stgnn_final.pt` tidak punya angka held-out di luar `results_real.csv`,
+    lihat larangan checkpoint demo di README/DEMO_BRIEF). Ini pernyataan
+    geometris + historis murni, sama semangatnya dengan `outbreak_foci()`.
+
+    -> dict: {"censuses": [t, ...] (45 nilai, tahun),
+              "palms": [{"id","x","y"}, ...] (1.200, x/y dinormalisasi 0..1,
+                        urutan SAMA dengan kolom `status`),
+              "status": [str, ...] (1.200 string 45-karakter, satu per pohon,
+                        karakter ke-i = status pada `censuses[i]`),
+              "aspect": tinggi/lebar kisi}
+    """
+    global _TIMELINE
+    if _TIMELINE is not None:
+        return _TIMELINE
+
+    panel = pd.read_csv(os.path.join(ROOT, "data_clean", "layer2_panel.csv"))
+    nodes = pd.read_csv(os.path.join(ROOT, "data_clean", "layer2_nodes.csv"))[
+        ["palm_id", "xm", "ym"]]
+
+    x0, x1 = float(nodes.xm.min()), float(nodes.xm.max())
+    y0, y1 = float(nodes.ym.min()), float(nodes.ym.max())
+    sx = lambda v: (float(v) - x0) / max(1e-9, x1 - x0)
+    sy = lambda v: (float(v) - y0) / max(1e-9, y1 - y0)
+
+    ts = sorted(panel.t.unique().tolist())
+    wide = (panel.pivot(index="palm_id", columns="t", values="status")
+                 .reindex(columns=ts).reindex(nodes.palm_id.values))
+    assert not wide.isna().any().any(), "sensus bolong — periksa layer2_panel.csv"
+
+    _TIMELINE = {
+        "censuses": [round(float(t), 1) for t in ts],
+        "palms": [{"id": pid, "x": sx(x), "y": sy(y)}
+                  for pid, x, y in zip(nodes.palm_id, nodes.xm, nodes.ym)],
+        "status": ["".join(row) for row in wide.itertuples(index=False, name=None)],
+        "aspect": (y1 - y0) / max(1e-9, x1 - x0),
+    }
+    return _TIMELINE
+
+
 def eg9pp_payload():
     """Data layar bukti: kisi Eg9PP + angka yang divalidasi di sana.
 
@@ -788,16 +839,50 @@ def fig_detection(img, df):
     return f
 
 
-def fig_graph(xy, edges):
-    """Simpul + sisi. SATU seri -> tanpa legenda; judul di UI yang menamainya."""
+def fig_graph(xy, edges, highlight=None):
+    """Simpul + sisi. SATU seri -> tanpa legenda; judul di UI yang menamainya.
+
+    `highlight` (indeks ke `xy`, opsional) menyorot SATU pohon dan tetangga
+    langsungnya — padanan statis dari sorot-hover di web (DEMO_BRIEF.md §8
+    butir 2): sisi & tetangga yang tersentuh digelapkan/dipertebal, sisanya
+    diredupkan. `None` -> perilaku lama, tak berubah.
+    """
     span_x = max(1.0, float(xy[:, 0].max() - xy[:, 0].min()))
     span_y = max(1.0, float(xy[:, 1].max() - xy[:, 1].min()))
     f, ax = _fig(7.0, max(2.6, 7.0 * span_y / span_x), axes=False)
+
+    nbrs = set()
+    if highlight is not None:
+        for i, j in edges:
+            if i == highlight:
+                nbrs.add(j)
+            elif j == highlight:
+                nbrs.add(i)
+
     for i, j in edges:
-        ax.plot([xy[i, 0], xy[j, 0]], [xy[i, 1], xy[j, 1]], color=PALETTE["grid"],
-                lw=2, zorder=1, solid_capstyle="round")
-    ax.scatter(xy[:, 0], xy[:, 1], s=52, c=PALETTE["node"],
-               edgecolors=PALETTE["surface"], linewidths=1.5, zorder=2)
+        hi = highlight is not None and (i == highlight or j == highlight)
+        ax.plot([xy[i, 0], xy[j, 0]], [xy[i, 1], xy[j, 1]],
+                color=PALETTE["ink"] if hi else PALETTE["grid"],
+                lw=2.6 if hi else 2,
+                alpha=1.0 if (hi or highlight is None) else 0.3,
+                zorder=2 if hi else 1, solid_capstyle="round")
+
+    if highlight is None:
+        ax.scatter(xy[:, 0], xy[:, 1], s=52, c=PALETTE["node"],
+                   edgecolors=PALETTE["surface"], linewidths=1.5, zorder=2)
+    else:
+        others = [k for k in range(len(xy)) if k != highlight and k not in nbrs]
+        if others:
+            ax.scatter(xy[others, 0], xy[others, 1], s=38, c=PALETTE["node"],
+                       edgecolors=PALETTE["surface"], linewidths=1.1, alpha=0.3, zorder=2)
+        if nbrs:
+            idx = list(nbrs)
+            ax.scatter(xy[idx, 0], xy[idx, 1], s=64, c=PALETTE["node"],
+                       edgecolors=PALETTE["surface"], linewidths=1.6, zorder=3)
+        ax.scatter([xy[highlight, 0]], [xy[highlight, 1]], s=120,
+                   c=PALETTE["series_1"], edgecolors=PALETTE["ink"],
+                   linewidths=2.0, zorder=4)
+
     ax.invert_yaxis()
     ax.set_xticks([]); ax.set_yticks([])
     return f
@@ -906,6 +991,42 @@ def fig_risk_map(df):
     return f
 
 
+def fig_timeline(idx=0):
+    """Kisi Eg9PP pada SATU sensus, untuk animasi 25 tahun (DEMO_BRIEF.md §8).
+
+    Warna = STATUS APA ADANYA dari catatan lapangan (A/S/D/C), bukan skor model
+    dan bukan kuintil risiko — `fig_risk_map` yang berwarna kuintil tetap layar
+    utama; ini pelengkap yang menunjukkan bagaimana status itu SAMPAI ke sana.
+
+    -> (figure, tahun_sensus_ini)
+    """
+    tl = eg9pp_timeline()
+    idx = max(0, min(int(idx), len(tl["censuses"]) - 1))
+    xs = np.array([p["x"] for p in tl["palms"]])
+    ys = np.array([p["y"] for p in tl["palms"]])
+    st_ = np.array([s[idx] for s in tl["status"]])
+
+    f, ax = _fig(8.0, max(3.4, 8.0 * tl["aspect"] + 1.1), axes=False)
+    for code, mk, col, lab, sz, z in (
+        ("D", "x", PALETTE["muted"], "mati", 16, 1),
+        ("C", "s", PALETTE["muted"], "disensor", 16, 1),
+        ("A", "o", PALETTE["series_1"], "asimtomatik", 20, 2),
+        ("S", "o", PALETTE["series_2"], "bergejala", 34, 3),
+    ):
+        m = st_ == code
+        if m.any():
+            kw = ({"edgecolors": PALETTE["surface"], "linewidths": 0.6}
+                  if mk == "o" else {})
+            ax.scatter(xs[m], ys[m], s=sz, marker=mk, c=col, zorder=z,
+                       label="%s (%d)" % (lab, int(m.sum())), **kw)
+    ax.invert_yaxis()
+    ax.set_aspect("equal")
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=4,
+              frameon=False, fontsize=8, labelcolor=PALETTE["ink_2"])
+    return f, tl["censuses"][idx]
+
+
 if __name__ == "__main__":
     print("== layar 4: Eg9PP ==")
     df = load_risk()
@@ -947,9 +1068,18 @@ if __name__ == "__main__":
     if smp:
         figs["1_deteksi"] = fig_detection(np.array(Image.open(smp[0]).convert("RGB")), d)
         if info["ok_n"]:
-            figs["2_graf"] = fig_graph(d[["cx", "cy"]].values,
-                                       edges_within(d[["cx", "cy"]].values,
-                                                    info["r_graph_px"]))
+            xy0 = d[["cx", "cy"]].values
+            e0 = edges_within(xy0, info["r_graph_px"])
+            figs["2_graf"] = fig_graph(xy0, e0)
+            # Sorot-hover (DEMO_BRIEF.md §8 butir 2), pratinjau statis: pohon
+            # berderajat tertinggi disorot, sama seperti hover di web/app.jsx.
+            if e0:
+                from collections import Counter as _Counter
+                deg0 = _Counter()
+                for i, j in e0:
+                    deg0[i] += 1; deg0[j] += 1
+                hi0 = deg0.most_common(1)[0][0]
+                figs["2b_graf_sorot"] = fig_graph(xy0, e0, highlight=hi0)
     print("\n== pratinjau gambar ==")
     for nm, fg in sorted(figs.items()):
         p = os.path.join(outdir, nm + ".png")

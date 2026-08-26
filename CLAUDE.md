@@ -141,6 +141,20 @@ chosen cross-fold, is *worse* than reusing the localisation threshold 0.75 (F1 0
 correction: "the detector only finds 0–1 symptomatic palms per tile" is the base rate, not a failure —
 a 1024² tile holds ~65 palms at a 1.3% Unhealthy rate.
 
+### `env_context.py` is a UI-only extension, never a model input
+
+Added for the finals round. Fetches real live data (wind/rain from Open-Meteo, soil texture from
+ISRIC SoilGrids, no API keys) for one user-supplied coordinate and displays it as decision-support
+context next to the risk ranking — see `ENV_CONTEXT.md`. It **never** feeds the GNN: neither `ds_B`
+nor Eg9PP is georeferenced (no lat/lon key exists to attach per-tree environmental values to either
+dataset), so any per-tree wind/soil feature would have to be simulated — exactly the kind of
+invented data this package's six prohibitions rule out everywhere else. Falls back to
+`env_context_cache.json` (a real snapshot, refreshed via `REFRESH_CACHE=1 python env_context.py`)
+when the network is unavailable, per `DEMO_BRIEF.md` §6's offline-safety requirement. Guarded by
+`test_env_context.py`. Do not wire this into `models_real.py` or any checkpoint without first
+solving the georeference problem — and if that's ever solved, redo this as measured evidence with
+`paired()`, not a silent feature addition.
+
 ### `data_clean/` is the only entry point
 
 `build_layer1.py` and `build_layer2_real.py` freeze the raw sources into six CSVs. Every downstream script

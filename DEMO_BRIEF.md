@@ -161,17 +161,17 @@ Ini bukan hiasan. Juri akan memeriksanya, dan inilah yang membedakan paket ini.
 
 ---
 
-## 6. Teknologi yang disarankan
+## 6. Teknologi yang dipakai
 
-**Streamlit** paling cocok: tim ini sudah Python, tidak perlu belajar web, dan satu berkas cukup.
+React + Starlette (`demo_api.py` + `web/app.jsx`), React dan Babel di-vendor lokal di
+`web/vendor/` sehingga demo tidak butuh internet maupun `npm install` di lokasi lomba.
 
 ```
-pip install streamlit
-streamlit run demo_app.py
+python demo_api.py
 ```
 
 Kalau khawatir jaringan atau instalasi di lokasi, alternatifnya **halaman HTML statis** dengan
-gambar dan CSV yang sudah dihitung sebelumnya — kehilangan fitur unggah gambar, tapi tidak bisa
+gambar dan CSV yang sudah dihitung sebelumnya, kehilangan fitur unggah gambar tapi tidak bisa
 gagal. Gambar siap pakai sudah ada di `figures/`:
 
 - `fig_layer2_risk_map.png` — peta risiko
@@ -200,8 +200,15 @@ gagal. Gambar siap pakai sudah ada di `figures/`:
 
 Urutan yang paling menambah nilai:
 
-1. **Animasi 25 tahun** pada layar 4 — putar sensus 1→45, penyakit menyebar terlihat merambat antar
-   tetangga. Datanya sudah ada di `data_clean/layer2_panel.csv` (kolom `t`, `status`).
-2. **Sisi tersorot** pada layar 2 — saat kursor menunjuk satu pohon, terangi tetangganya. Membuat
-   gagasan "graf" langsung terpahami tanpa penjelasan.
-3. **Unggah gambar sendiri** pada layar 1 — sudah didukung `detect_centres.py`; tinggal disambungkan.
+1. ✅ **SELESAI — Animasi 25 tahun** pada layar Bukti & validasi — putar sensus 1→45, penyakit
+   menyebar terlihat merambat antar tetangga. Status **A/S/D/C apa adanya** dari
+   `data_clean/layer2_panel.csv`, BUKAN skor model. Kode: `demo_core.eg9pp_timeline()` +
+   `demo_core.fig_timeline()`; komponen `Timeline` di `web/app.jsx`, play/pause + scrubber,
+   `GET /api/eg9pp_timeline`.
+2. ✅ **SELESAI — Sisi tersorot** pada layar Graf kontak — arahkan kursor (atau ketuk untuk
+   mengunci, ramah sentuh) ke satu pohon untuk menyorot tetangga langsungnya; sisi & pohon lain
+   diredupkan, lencana jumlah tetangga tampil di atas pohon yang disorot. Kode:
+   `demo_core.fig_graph(highlight=...)`; komponen `Overlay` di `web/app.jsx` (state
+   `hover`/`pinned`, peta ketetanggaan dari `edge_idx` di `GET /api/analyze`).
+3. ✅ **SELESAI — Unggah gambar sendiri**, termasuk beberapa sekaligus (survei satu blok kebun) —
+   lihat README bagian "Survei banyak foto".

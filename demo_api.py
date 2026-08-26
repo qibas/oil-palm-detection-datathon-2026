@@ -1,16 +1,17 @@
-"""Backend demo SawitGuard: Starlette + uvicorn, tanpa dependensi baru.
+"""Backend demo SawitGuard: Starlette + uvicorn.
 
     python demo_api.py            # http://localhost:8000
 
-Kenapa Starlette dan bukan FastAPI: `starlette`, `uvicorn`, dan `python-multipart`
-sudah ikut terpasang bersama Streamlit, jadi frontend ini berjalan tanpa menambah
-satu paket pun. React dan Babel di-vendor lokal di `web/vendor/`, sehingga demo
-tidak membutuhkan internet sama sekali saat dijalankan di lokasi lomba.
+Kenapa Starlette dan bukan FastAPI: paket ini ringan (tiga dependensi kecil) dan
+tidak butuh validasi skema otomatis yang jadi alasan utama memilih FastAPI. React
+dan Babel di-vendor lokal di `web/vendor/`, sehingga demo tidak membutuhkan internet
+sama sekali saat dijalankan di lokasi lomba.
 
 Seluruh perhitungan tetap di `demo_core.py`. Berkas ini hanya lapisan HTTP; ia tidak
-boleh menghitung apa pun sendiri, supaya versi web dan versi Streamlit tidak mungkin
-memberi angka berbeda.
+boleh menghitung apa pun sendiri, supaya angka yang tampil tidak pernah menyimpang
+dari yang dihasilkan `python demo_core.py` langsung dari baris perintah.
 """
+import asyncio
 import base64
 import io
 import json
@@ -30,6 +31,7 @@ from starlette.routing import Route, Mount
 from starlette.staticfiles import StaticFiles
 
 import demo_core as core
+import env_context as ec
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.join(ROOT, "web")
@@ -117,11 +119,16 @@ async def api_analyze(request):
                "deg": None if not np.isfinite(r.deg) else int(r.deg)}
               for r in df.itertuples()]
 
-    edges = []
+    # `edges` = koordinat siap-gambar (garis); `edge_idx` = pasangan indeks ke
+    # `crowns`, dipakai frontend untuk sorot-hover (peta ketetanggaan O(1)) tanpa
+    # perlu mencocokkan koordinat float. Dua representasi dari sisi yang SAMA,
+    # jangan dibiarkan menyimpang - keduanya diisi dari loop yang sama.
+    edges, edge_idx = [], []
     if info.get("ok_n"):
         xy = df[["cx", "cy"]].values
         for i, j in core.edges_within(xy, info["r_graph_px"]):
             edges.append([nx(xy[i, 0]), ny(xy[i, 1]), nx(xy[j, 0]), ny(xy[j, 1])])
+            edge_idx.append([int(i), int(j)])
 
     def pack(res):
         if res is None:
@@ -189,7 +196,8 @@ async def api_analyze(request):
                    "deg_inner": None if not info.get("ok_n") else round(info["deg_inner"], 2),
                    "n_inner": int(info.get("n_inner", 0)),
                    "weights": info.get("weights", ""), "conf": info.get("conf")},
-        "edges": edges, "crowns": crowns, "risk": risk, "risk_soft": risk_soft,
+        "edges": edges, "edge_idx": edge_idx, "crowns": crowns,
+        "risk": risk, "risk_soft": risk_soft,
         "foci": (lambda f: None if f is None else dict(
             f, fokus=[dict(k, cx=nx(k["cx"]), cy=ny(k["cy"]),
                            sakit_xy=[[nx(a), ny(b)] for a, b in k["sakit_xy"]])
@@ -208,6 +216,41 @@ async def api_eg9pp(request):
     if _EG is None:
         _EG = core.eg9pp_payload()
     return JSONResponse(_EG)
+
+
+_TL = None
+
+
+async def api_eg9pp_timeline(request):
+    """Animasi 25 tahun: status A/S/D/C TIAP sawit TIAP sensus, apa adanya —
+    BUKAN skor model. Lihat docstring `demo_core.eg9pp_timeline`. Di-cache."""
+    global _TL
+    if _TL is None:
+        _TL = core.eg9pp_timeline()
+    return JSONResponse(_TL)
+
+
+async def api_env_context(request):
+    """Konteks lingkungan (angin/hujan/tanah) untuk SATU koordinat.
+
+    BUKAN masukan model, lihat docstring `env_context.py`. Query params
+    opsional `?lat=..&lon=..`; tanpa itu memakai `DEFAULT_LOCATION` (contoh
+    generik Riau, bukan koordinat kebun Eg9PP/ds_B, keduanya tidak
+    bergeoreferensi di paket ini).
+
+    `ec.get_context()` memanggil `urllib.request.urlopen()` langsung, panggilan
+    BLOKIR biasa, bukan async. Dulu dipanggil langsung di sini dan itu bug nyata:
+    di dalam handler `async def`, satu panggilan blokir membekukan SELURUH loop
+    event Starlette, bukan cuma request ini, sampai 12 detik (dua panggilan luar,
+    masing-masing timeout 6 detik) kalau jaringan lambat. Efeknya di layar:
+    seluruh demo terasa macet setiap kali layar Konteks lingkungan dibuka, bukan
+    cuma layar itu sendiri. `asyncio.to_thread` memindahkannya ke thread terpisah
+    supaya loop event tetap bisa melayani permintaan lain selagi menunggu.
+    """
+    lat = request.query_params.get("lat")
+    lon = request.query_params.get("lon")
+    ctx = await asyncio.to_thread(ec.get_context, lat, lon)
+    return JSONResponse(ctx)
 
 
 class NoCacheStatic(StaticFiles):
@@ -235,6 +278,8 @@ app = Starlette(routes=[
     Route("/api/samples", api_samples),
     Route("/api/analyze", api_analyze, methods=["POST"]),
     Route("/api/eg9pp", api_eg9pp),
+    Route("/api/eg9pp_timeline", api_eg9pp_timeline),
+    Route("/api/env_context", api_env_context),
     Mount("/web", NoCacheStatic(directory=WEB), name="web"),
 ])
 
