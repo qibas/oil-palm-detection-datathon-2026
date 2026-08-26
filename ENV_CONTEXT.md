@@ -72,8 +72,11 @@ menyembunyikannya.
 `DEMO_BRIEF.md` §6 sudah mewanti-wanti: jaringan di lokasi lomba tidak boleh diandalkan.
 `env_context.py` menangani ini dengan jaring pengaman dua lapis:
 
-1. **Coba data hidup dulu**, timeout 4 detik per panggilan (dua panggilan paralel
-   secukupnya lewat `asyncio.to_thread` di backend, jadi tidak membekukan server).
+1. **Coba data hidup dulu**, timeout 6 detik per panggilan. Angin/hujan (Open-Meteo)
+   dan tanah (ISRIC SoilGrids) diambil BERSAMAAN lewat `ThreadPoolExecutor`, bukan
+   berurutan — ISRIC terukur butuh ~3,3 detik sendirian, jadi berurutan berarti
+   kasus terburuk dua kali lipat. Seluruh `get_context()` lalu dipanggil lewat
+   `asyncio.to_thread` di backend, jadi menunggunya tidak membekukan server.
 2. **Kalau gagal** (jaringan mati, API down, timeout), jatuh ke `env_context_cache.json` — satu
    snapshot data **asli** yang direkam sebelumnya lewat `REFRESH_CACHE=1 python env_context.py`.
    UI menandai dengan jelas kapan ia menampilkan cache, bukan data hidup.

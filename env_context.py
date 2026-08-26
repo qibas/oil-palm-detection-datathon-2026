@@ -45,7 +45,7 @@ import urllib.request
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CACHE_PATH = os.path.join(ROOT, "env_context_cache.json")
 
-TIMEOUT_S = 4
+TIMEOUT_S = 6
 
 # Lokasi contoh generik — SABUK SAWIT Riau, Sumatra. BUKAN koordinat asli
 # kebun Eg9PP atau ds_B (keduanya tidak bergeoreferensi di paket ini). Dipilih
@@ -167,8 +167,15 @@ def get_context(lat=None, lon=None):
     loc = DEFAULT_LOCATION if lat is None or lon is None else {
         "lat": float(lat), "lon": float(lon), "label": "kebun kamu"}
 
-    w = fetch_weather(loc["lat"], loc["lon"])
-    s = fetch_soil(loc["lat"], loc["lon"])
+    # Dijalankan BERSAMAAN, bukan berurutan: keduanya independen (angin/hujan
+    # dari Open-Meteo, tanah dari SoilGrids), dan ISRIC SoilGrids terukur
+    # butuh ~3,3 detik sendirian — kalau dijalankan berurutan, kasus terburuk
+    # jadi dua kali TIMEOUT_S alih-alih satu.
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        fw = ex.submit(fetch_weather, loc["lat"], loc["lon"])
+        fs = ex.submit(fetch_soil, loc["lat"], loc["lon"])
+        w, s = fw.result(), fs.result()
     using_cache = not (w.get("ok") and s.get("ok"))
 
     if using_cache:

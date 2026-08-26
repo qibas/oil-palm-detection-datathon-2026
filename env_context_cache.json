@@ -4,19 +4,14 @@
     "lon": 101.4174,
     "label": "Riau, Sumatra (contoh generik, BUKAN koordinat kebun asli)"
   },
-  "fetched_at": "2026-08-21T23:54+1000",
+  "fetched_at": "2026-08-26T23:47+1000",
   "weather": {
     "ok": true,
     "live": true,
-    "wind_speed_kmh": 7.9,
-    "wind_dir_deg": 164.0,
-    "rain_30d_mm": 122.0,
+    "wind_speed_kmh": 5.9,
+    "wind_dir_deg": 35.0,
+    "rain_30d_mm": 94.1,
     "rain_daily_mm": [
-      8.5,
-      13.6,
-      4.6,
-      9.5,
-      1.4,
       1.6,
       4.8,
       4.8,
@@ -41,10 +36,15 @@
       0.0,
       8.9,
       1.7,
-      0.2
+      0.2,
+      0.4,
+      0.1,
+      0.1,
+      0.0,
+      9.1
     ],
     "source": "Open-Meteo (api.open-meteo.com), live",
-    "fetched_at": "2026-08-21T20:45"
+    "fetched_at": "2026-08-26T20:45"
   },
   "soil": {
     "ok": true,

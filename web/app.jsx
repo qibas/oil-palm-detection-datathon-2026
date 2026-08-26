@@ -1030,22 +1030,23 @@ function EnvContext() {
   const [d, setD] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // Batas waktu di sisi peramban sendiri, terpisah dari batas 4 detik x 2 di
-  // server. Jaring pengaman kedua: kalau server pernah macet karena alasan lain
-  // (bukan hanya panggilan luar yang lambat), layar ini tidak boleh terjebak
-  // "Memuat…" selamanya - 10 detik lalu ditampilkan sebagai galat yang bisa
+  // Batas waktu di sisi peramban sendiri, terpisah dari batas 6 detik per
+  // panggilan di server (angin dan tanah diambil BERSAMAAN, bukan berurutan,
+  // jadi kasus terburuk ~6 detik bukan ~12). Jaring pengaman kedua: kalau
+  // server pernah macet karena alasan lain, layar ini tidak boleh terjebak
+  // "Memuat…" selamanya - 15 detik lalu ditampilkan sebagai galat yang bisa
   // dicoba ulang lewat tombol "Perbarui".
   const load = useCallback((la, lo) => {
     setBusy(true);
     const ac = new AbortController();
-    const bom = setTimeout(() => ac.abort(), 10000);
+    const bom = setTimeout(() => ac.abort(), 15000);
     fetch("/api/env_context?lat=" + la + "&lon=" + lo, { signal: ac.signal })
       .then(r => r.json())
       .then(j => { clearTimeout(bom); setD(j); setBusy(false); })
       .catch(e => {
         clearTimeout(bom);
         const msg = e.name === "AbortError"
-          ? "Server tidak merespons dalam 10 detik. Coba lagi."
+          ? "Server tidak merespons dalam 15 detik. Coba lagi."
           : String(e);
         setD({ ok: false, error: msg }); setBusy(false);
       });
