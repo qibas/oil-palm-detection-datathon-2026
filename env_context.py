@@ -106,6 +106,15 @@ def fetch_soil(lat, lon):
     try:
         j = _get_json(url)
         layers = {L["name"]: L["depths"][0]["values"]["mean"] for L in j["properties"]["layers"]}
+        # SoilGrids mengembalikan `mean: null` (bukan galat HTTP) di atas air atau
+        # di luar cakupan datanya - koordinat yang jatuh di laut/danau menghasilkan
+        # ini, bukan kegagalan jaringan. Dibedakan di sini supaya pesannya jujur:
+        # "tidak ada data di titik ini", bukan "tidak ada koneksi internet".
+        if layers.get("clay") is None or layers.get("sand") is None or layers.get("bdod") is None:
+            return {"ok": False, "no_data": True,
+                    "error": "SoilGrids tidak punya data tanah di koordinat ini "
+                             "(kemungkinan berada di atas air atau di luar cakupan datanya). "
+                             "Coba koordinat lain di daratan."}
         return {
             "ok": True, "live": True,
             "clay_pct": round(layers["clay"] / 10.0, 1),
@@ -176,6 +185,15 @@ def get_context(lat=None, lon=None):
         fw = ex.submit(fetch_weather, loc["lat"], loc["lon"])
         fs = ex.submit(fetch_soil, loc["lat"], loc["lon"])
         w, s = fw.result(), fs.result()
+
+    # "Tidak ada data di titik ini" (mis. koordinat jatuh di laut/danau) itu
+    # jaringan menyala tapi SoilGrids sungguh tidak punya nilai - beda kasus
+    # dari koneksi mati, dan tidak boleh diam-diam diganti ke lokasi cache lain
+    # sambil menyalahkan "tidak ada internet". Ditolak jujur di sini, bukan
+    # jatuh ke jalur using_cache di bawah.
+    if s.get("no_data"):
+        return {"ok": False, "error": s["error"]}
+
     using_cache = not (w.get("ok") and s.get("ok"))
 
     if using_cache:
